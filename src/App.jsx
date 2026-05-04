@@ -539,6 +539,7 @@ function pCSV(line){
   return r;
 }
 function parseScenariCSV(text){
+  var SCEN_MAP={"GOLDILOCKS ECONOMY":"goldilocks","RECESSION":"recession","STAGFLATION":"stagflation","REFLATION":"reflation","DISINFLATION/SOFT LANDING":"disinflation","DOLLAR WEAKNESS/GLOBAL REBALANCING +BITCOIN":"dollarweaknessbtc","DOLLAR WEAKNESS/GLOBAL REBALANCING":"dollarweakness","DEFLATION":"deflation","DEBASEMENT AGGRESSIVO":"debasementbtc","DEBASEMENT (SENZA BITCOIN)":"debasement"};
   var lines=text.split("\n");
   var upd={};var cur=null;var etfs=[];
   for(var li=0;li<lines.length;li++){
@@ -582,7 +583,7 @@ function parseNazionaliCSV(text){
   return etfs;
 }
 function parseMacroText(text){
-  var TM={"T10Y2Y":"yieldCurve","VIX":"vix","MOVE":"move","USBCOI":"ism","USMNO":"ismNewOrders","USMEMP":"ismEmployment","USMPR":"ismPricesPaid","USCIR":"cpi","USPPIYY":"ppi","USCPCEPIAC":"pce","USCCEPIAC":"pce","USPPIMM":"ppiMom","USCPCEPIMM":"pceMom","USIRMM":"cpiMom","DTB3":"dtb3","SOFR":"sofr","EUJVR":"eujvr","EUUR":"euur","EUIRYY":"euCpi","EUIRMM":"euCpiMom","EUCIRMM":"euCpiCoreMom","EUPPIMM":"euPpiMom","EUPPIYY":"euPpiYoy","DEPPIMM":"deppimm","DEPPIYY":"deppiyy","EURSYY":"eursyy","USRSYY":"retailSales","USHST":"housingStarts","M2SL/DXY":"m2Dxy","VVIX/VIX":"vvixVix","USNFP":"nfp","TRIN.NY":"trin","ATHI.NY":"athi","ATLO.NY":"atlo","USALOLITOAASTSAM":"lei","TRJEFFCRB":"crb","BDI":"bdi","DEIFOE":"ifo","USIJC":"jobless","USCFNAI":"cfnai","USCENAI":"cfnai","BAMLCOA0CM":"igSpread","BAMLCOAOCM":"igSpread","BAMLC0A0CM":"igSpread","BAMLC0A0CM":"igSpread","BAMLHOAOHYM2":"hySpread","BAMLH0A0HYM2":"hySpread","BAMLEMHBHYCRPIOAS":"emSpread","PCC":"pcc","PCCE":"pcce","US10Y":"us10y","DFII10":"realYield","T5YIE":"breakeven","USO2Y":"us2y","US02Y":"us2y","US10Y-DE10Y":"spread10y","US1OY-DE10Y":"spread10y","US10Y-DE1OY":"spread10y","DE10Y-DE02Y":"deCurve","USO2Y-DEO2Y":"spread2y","US02Y-DE02Y":"spread2y","USO2Y-DE02Y":"spread2y","US02Y-DEO2Y":"spread2y","IT10Y-DE10Y":"btpBund","IT1OY-DE10Y":"btpBund","DE10Y":"de10y","DEO2Y":"de02y","DE02Y":"de02y","EURUSD":"eurusd","DXY":"dxy","USOIL":"oil","HG1!/GC1!":"copperGold","SPX":"spx","SX5E":"sx5e","11!":"euribor","US1OY-DE10Y":"spread10y","USO2Y-DE02Y":"spread2y","BAMLCOAOCM":"igSpread","HG 1!/GC1!":"copperGold","HG1!/GC1!":"copperGold","USCPPMM":"ppiCoreMom","USCIRMM":"cpiCoreMom"};
+  var TM={"T10Y2Y":"yieldCurve","VIX":"vix","MOVE":"move","USBCOI":"ism","USMNO":"ismNewOrders","USMEMP":"ismEmployment","USMPR":"ismPricesPaid","USCIR":"cpi","USPPIYY":"ppi","USCPCEPIAC":"pce","USCCEPIAC":"pce","USPPIMM":"ppiMom","USCPCEPIMM":"pceMom","USIRMM":"cpiMom","DTB3":"dtb3","SOFR":"sofr","EUJVR":"eujvr","EUUR":"euur","EUIRYY":"euCpi","EUIRMM":"euCpiMom","EUCIRMM":"euCpiCoreMom","EUPPIMM":"euPpiMom","EUPPIYY":"euPpiYoy","DEPPIMM":"deppimm","DEPPIYY":"deppiyy","EURSYY":"eursyy","USRSYY":"retailSales","USHST":"housingStarts","M2SL/DXY":"m2Dxy","VVIX/VIX":"vvixVix","USNFP":"nfp","TRIN.NY":"trin","ATHI.NY":"athi","ATLO.NY":"atlo","USALOLITOAASTSAM":"lei","TRJEFFCRB":"crb","BDI":"bdi","DEIFOE":"ifo","USIJC":"jobless","USCFNAI":"cfnai","USCENAI":"cfnai","BAMLCOA0CM":"igSpread","BAMLCOAOCM":"igSpread","BAMLC0A0CM":"igSpread","BAMLHOAOHYM2":"hySpread","BAMLH0A0HYM2":"hySpread","BAMLEMHBHYCRPIOAS":"emSpread","PCC":"pcc","PCCE":"pcce","US10Y":"us10y","DFII10":"realYield","T5YIE":"breakeven","USO2Y":"us2y","US02Y":"us2y","US10Y-DE10Y":"spread10y","US1OY-DE10Y":"spread10y","US10Y-DE1OY":"spread10y","DE10Y-DE02Y":"deCurve","USO2Y-DEO2Y":"spread2y","US02Y-DE02Y":"spread2y","USO2Y-DE02Y":"spread2y","US02Y-DEO2Y":"spread2y","IT10Y-DE10Y":"btpBund","IT1OY-DE10Y":"btpBund","DE10Y":"de10y","DEO2Y":"de02y","DE02Y":"de02y","EURUSD":"eurusd","DXY":"dxy","USOIL":"oil","HG1!/GC1!":"copperGold","HG 1!/GC1!":"copperGold","SPX":"spx","SX5E":"sx5e","11!":"euribor","USCPPMM":"ppiCoreMom","USCIRMM":"cpiCoreMom"};
   var upd={};
   var lines=text.split("\n");
   function extractNum(s){
@@ -2045,22 +2046,6 @@ function valueColor(id, v){
     case "athi":         return v<100000?"#EF4444":v<300000?"#F59E0B":"#10B981";
     case "atlo":         return v<100000?"#10B981":v<250000?"#F59E0B":"#EF4444";
     case "spx":          return v<5000?"#EF4444":v<6500?"#EF4444":"#10B981";
-    case "dtb3":         return v<3?"#10B981":v<4?"#F59E0B":"#EF4444";
-    case "sofr":         return v<3?"#10B981":v<4?"#F59E0B":"#EF4444";
-    case "de10y":        return v<1.5?"#10B981":v<3?"#F59E0B":"#EF4444";
-    case "btpBund":      return v<0.6?"#10B981":v<1.0?"#F59E0B":v<1.5?"#EF4444":"#7f1d1d";
-    case "euur":         return v<5.5?"#10B981":v<7?"#F59E0B":"#EF4444";
-    case "eujvr":        return v<1.5?"#10B981":v<2.5?"#F59E0B":"#EF4444";
-    case "eurusd":       return v<1.05?"#EF4444":v<1.10?"#F59E0B":"#10B981";
-    case "sx5e":         return v<4000?"#EF4444":v<5000?"#F59E0B":"#10B981";
-    case "vvixVix":      return v<4.5?"#10B981":v<5.5?"#F59E0B":"#EF4444";
-    case "deppimm":      return v<0?"#10B981":v<0.3?"#F59E0B":"#EF4444";
-    case "deppiyy":      return v<1?"#10B981":v<3?"#F59E0B":"#EF4444";
-    case "eursyy":       return v<0?"#EF4444":v<2?"#F59E0B":"#10B981";
-    case "trin":         return v<0.7?"#0EA5E9":v<1.0?"#10B981":v<1.5?"#F59E0B":"#EF4444";
-    case "athi":         return v<100000?"#EF4444":v<300000?"#F59E0B":"#10B981";
-    case "atlo":         return v<100000?"#10B981":v<250000?"#F59E0B":"#EF4444";
-    case "spx":          return v<5000?"#EF4444":v<6500?"#F59E0B":"#10B981";
     default:           return "#94a3b8";
   }
 }
