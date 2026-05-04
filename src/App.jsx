@@ -687,8 +687,15 @@ export default function App(){
       if(savedInd){
         var ind=JSON.parse(savedInd);
         Object.keys(ind).forEach(function(k){INDICATORS[k]=ind[k];});
-        setRenderKey(function(k){return k+1;});
       }
+      var savedPrev=localStorage.getItem("pr_prev_indicators");
+      if(savedPrev){
+        var prev=JSON.parse(savedPrev);
+        Object.keys(prev).forEach(function(k){PREV_INDICATORS[k]=prev[k];});
+      }
+      if(savedInd||savedPrev)setRenderKey(function(k){return k+1;});
+      // ETF prev baseline stored separately - used by momentum delta calc
+      // window._etfPrev available for future use
     }catch(e){}
   },[]);
 
@@ -731,7 +738,10 @@ export default function App(){
     const missing=allKeys.filter(function(k){return !window._macroUpdated[k];});
     var msg="Incolla: +"+n+" | Aggiornati: "+totalUpd+"/"+targetInd;
     if(missing.length>0)msg+=" | Mancanti: "+missing.join(", ");
-    try{localStorage.setItem("pr_indicators",JSON.stringify(INDICATORS));}catch(e){}
+    try{
+      localStorage.setItem("pr_prev_indicators",localStorage.getItem("pr_indicators")||JSON.stringify(INDICATORS));
+      localStorage.setItem("pr_indicators",JSON.stringify(INDICATORS));
+    }catch(e){}
     setRefreshMsg(msg);
     setRenderKey(function(k){return k+1;});
   }
@@ -1887,6 +1897,17 @@ export default function App(){
         <div style={{fontSize:10,color:"#6b7280",marginBottom:12}}>Aggiorna prezzi e variazioni per tutti gli scenari e gli ETF nazionali.</div>
         <button onClick={fetchEtfData} disabled={refreshing} style={{background:refreshing?"#1f2937":"#F59E0B",color:"#000",border:"none",borderRadius:8,padding:"10px 20px",fontSize:12,fontWeight:800,cursor:"pointer",width:"100%"}}>
           {refreshing?"⏳ Caricamento...":"🔄 REFRESH ETF"}
+        </button>
+        <button onClick={function(){
+          try{
+            var snap={};
+            SCENARIOS.forEach(function(s){snap[s.id]=JSON.parse(JSON.stringify(s.etfs));});
+            localStorage.setItem("pr_etf_prev",JSON.stringify(snap));
+            var now=new Date();
+            setRefreshMsg("📌 Baseline salvata "+now.getHours()+":"+String(now.getMinutes()).padStart(2,"0"));
+          }catch(e){setRefreshMsg("Errore salvataggio");}
+        }} style={{background:"#1e3a5f",color:"#60a5fa",border:"1px solid #3b82f6",borderRadius:8,padding:"8px 20px",fontSize:11,fontWeight:700,cursor:"pointer",width:"100%",marginTop:6}}>
+          📌 SALVA SETTIMANA
         </button>
       </div>
       <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:12,padding:16,marginBottom:12}}>
