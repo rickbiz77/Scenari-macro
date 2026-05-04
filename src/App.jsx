@@ -566,7 +566,6 @@ function parseScenariCSV(text){
     if(e.p)etfs.push(e);
   }
   if(cur&&etfs.length){if(!upd[cur])upd[cur]={etfs:[],avg:{}};upd[cur].etfs=etfs.slice();}
-  window._macroNotFound=notFound;
   return upd;
 }
 function parseNazionaliCSV(text){
