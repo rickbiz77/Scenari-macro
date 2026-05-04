@@ -682,14 +682,8 @@ export default function App(){
   const sc=sel?SCENARIOS.find(s=>s.id===sel):null;
 
   useEffect(function(){
-    // Restore only INDICATORS and date from localStorage
-    try{
-      var savedInd=localStorage.getItem("pr_indicators");
-      if(savedInd){var ind=JSON.parse(savedInd);Object.keys(ind).forEach(function(k){INDICATORS[k]=ind[k];});}
-      var savedDate=localStorage.getItem("pr_lastupdate");
-      if(savedDate)setLastUpdate(savedDate);
-    }catch(e){}
-    setRenderKey(function(k){return k+1;});
+    // Clear any stale localStorage data
+    try{localStorage.removeItem("pr_indicators");localStorage.removeItem("pr_lastupdate");}catch(e){}
   },[]);
 
   async function fetchEtfData(){
