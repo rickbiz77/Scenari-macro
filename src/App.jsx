@@ -683,13 +683,10 @@ export default function App(){
 
   useEffect(function(){
     try{
-      var savedDate=localStorage.getItem("pr_lastupdate");
-      var fileDate=LAST_UPDATE; // "DD/MM/YYYY"
-      function toTS(d){var p=d.split("/");return new Date(p[2],p[1]-1,p[0]).getTime();}
-      if(savedDate&&toTS(savedDate)>=toTS(fileDate)){
-        var savedInd=localStorage.getItem("pr_indicators");
-        if(savedInd){var ind=JSON.parse(savedInd);Object.keys(ind).forEach(function(k){INDICATORS[k]=ind[k];});}
-        setLastUpdate(savedDate);
+      var savedInd=localStorage.getItem("pr_indicators");
+      if(savedInd){
+        var ind=JSON.parse(savedInd);
+        Object.keys(ind).forEach(function(k){INDICATORS[k]=ind[k];});
         setRenderKey(function(k){return k+1;});
       }
     }catch(e){}
@@ -734,6 +731,7 @@ export default function App(){
     const missing=allKeys.filter(function(k){return !window._macroUpdated[k];});
     var msg="Incolla: +"+n+" | Aggiornati: "+totalUpd+"/"+targetInd;
     if(missing.length>0)msg+=" | Mancanti: "+missing.join(", ");
+    try{localStorage.setItem("pr_indicators",JSON.stringify(INDICATORS));}catch(e){}
     setRefreshMsg(msg);
     setRenderKey(function(k){return k+1;});
   }
