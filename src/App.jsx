@@ -260,13 +260,6 @@ function TT({active,payload,label}){
     <div style={{fontSize:13,fontWeight:700,color:v>=0?"#10B981":"#EF4444",fontFamily:"monospace"}}>{v>=0?"+":""}{v?.toFixed?v.toFixed(2):v}</div>
   </div>;
 }
-function TT({active,payload,label}){
-  if(!active||!payload?.length)return null;const v=payload[0].value;if(v===null||v===undefined)return null;
-  return <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:8,padding:"8px 12px"}}>
-    <div style={{fontSize:10,color:"#94a3b8"}}>{label}</div>
-    <div style={{fontSize:13,fontWeight:700,color:v>=0?"#10B981":"#EF4444",fontFamily:"monospace"}}>{v>=0?"+":""}{v?.toFixed?v.toFixed(2):v}</div>
-  </div>;
-}
 function sortedScenarios(){return[...SCENARIOS].sort((a,b)=>{const am=a.avg.m??-999,bm=b.avg.m??-999;if(Math.abs(bm-am)>0.001)return bm-am;return(b.avg.q??-999)-(a.avg.q??-999);});}
 
 // ── INDICATORI MACRO — aggiornati da screenshot claude checklist ──
