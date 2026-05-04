@@ -682,7 +682,7 @@ export default function App(){
   const sc=sel?SCENARIOS.find(s=>s.id===sel):null;
 
   useEffect(function(){
-    // Restore from localStorage
+    // Restore from localStorage only
     try{
       var savedInd=localStorage.getItem("pr_indicators");
       if(savedInd){var ind=JSON.parse(savedInd);Object.keys(ind).forEach(function(k){INDICATORS[k]=ind[k];});}
@@ -693,8 +693,7 @@ export default function App(){
       var savedDate=localStorage.getItem("pr_lastupdate");
       if(savedDate)setLastUpdate(savedDate);
     }catch(e){}
-    // Auto-refresh ETF
-    fetchEtfData();
+    setRenderKey(function(k){return k+1;});
   },[]);
 
   async function fetchEtfData(){
@@ -818,7 +817,7 @@ export default function App(){
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center"}}>
-          <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:6,padding:"5px 10px",fontSize:9,color:"#6b7280"}}>📅 {LAST_UPDATE}</div>
+          <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:6,padding:"5px 10px",fontSize:9,color:"#6b7280"}}>📅 {lastUpdate}</div>
         </div>
       </div>
       <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
@@ -1360,7 +1359,7 @@ export default function App(){
         }
 
         return <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          <div style={{fontSize:8,color:"#6b7280",letterSpacing:1,marginBottom:4}}>ETF NAZIONALI — 26 paesi · ordinati per momentum ↓ · agg. {LAST_UPDATE}</div>
+          <div style={{fontSize:8,color:"#6b7280",letterSpacing:1,marginBottom:4}}>ETF NAZIONALI — 26 paesi · ordinati per momentum ↓ · agg. {lastUpdate}</div>
           {nazWithScore.map((e,i)=><NazCard key={e.t} e={e} i={i}/>)}
         </div>;
       })()}
@@ -1453,7 +1452,7 @@ export default function App(){
       {/* Leading score per scenario */}
       <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:10,padding:14}}>
         <div style={{fontSize:9,color:"#6b7280",letterSpacing:2,marginBottom:4}}>LEADING SCORE PER SCENARIO</div>
-        <div style={{fontSize:8,color:"#374151",marginBottom:10}}>45 indicatori macro da claude checklist — agg. {LAST_UPDATE}</div>
+        <div style={{fontSize:8,color:"#374151",marginBottom:10}}>45 indicatori macro da claude checklist — agg. {lastUpdate}</div>
         <div style={{display:"flex",flexDirection:"column",gap:6}}>
           {[...SCENARIOS].sort((a,b)=>(leadMap[b.id]??-999)-(leadMap[a.id]??-999)).map(s=>{
             const l=leadMap[s.id];
@@ -1700,7 +1699,7 @@ export default function App(){
 
       // Render categorie affiancate BCE|FED alla stessa altezza
       return <div>
-        <div style={{fontSize:8,color:"#6b7280",letterSpacing:2,marginBottom:12}}>POSIZIONAMENTO BANCHE CENTRALI — agg. {LAST_UPDATE} · score normalizzato per categoria</div>
+        <div style={{fontSize:8,color:"#6b7280",letterSpacing:2,marginBottom:12}}>POSIZIONAMENTO BANCHE CENTRALI — agg. {lastUpdate} · score normalizzato per categoria</div>
         {/* Header cards */}
         <div style={{display:"flex",gap:12,marginBottom:16}}>
           <div style={{flex:1}}><HeaderCard name="BCE" flag="🇪🇺" score={bceScore}/></div>
@@ -1755,7 +1754,7 @@ export default function App(){
 
       <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:10,padding:14}}>
         <div style={{fontSize:11,color:"#818cf8",letterSpacing:2,fontWeight:700,marginBottom:2}}>LEADING SCORE</div>
-        <div style={{fontSize:8,color:"#374151",marginBottom:10}}>45 indicatori macro — agg. {LAST_UPDATE}</div>
+        <div style={{fontSize:8,color:"#374151",marginBottom:10}}>45 indicatori macro — agg. {lastUpdate}</div>
         <ResponsiveContainer width="100%" height={160}>
           <BarChart data={[...SCENARIOS].sort((a,b)=>(leadMap[b.id]??0)-(leadMap[a.id]??0)).map(s=>({name:s.name.replace(" AGGRESSIVO","").replace("/SOFT LANDING",""),val:Math.round(leadMap[s.id]??0)}))} margin={{top:0,right:0,bottom:40,left:0}}>
             <XAxis dataKey="name" tick={{fontSize:7,fill:"#6b7280"}} angle={-25} textAnchor="end" interval={0}/>
@@ -1821,7 +1820,7 @@ export default function App(){
         const col=v=>v>0?"#10B981":v<0?"#EF4444":"#6b7280";
         const fmt=v=>(v>0?"+":"")+v.toFixed(2)+"%";
         return <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:10,padding:12}}>
-          <div style={{fontSize:11,color:"#94a3b8",letterSpacing:2,fontWeight:700,marginBottom:8}}>ANDAMENTO BREVE PERIODO — fonte Lops {LAST_UPDATE}</div>
+          <div style={{fontSize:11,color:"#94a3b8",letterSpacing:2,fontWeight:700,marginBottom:8}}>ANDAMENTO BREVE PERIODO — fonte Lops {lastUpdate}</div>
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}>
               <thead>
@@ -1860,7 +1859,7 @@ export default function App(){
         const col=v=>v>0?"#10B981":v<0?"#EF4444":"#6b7280";
         const fmt=v=>(v>0?"+":"")+v.toFixed(2)+"%";
         return <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:10,padding:12}}>
-          <div style={{fontSize:11,color:"#94a3b8",letterSpacing:2,fontWeight:700,marginBottom:8}}>ANDAMENTO MEDIO-LUNGO PERIODO — fonte Lops {LAST_UPDATE}</div>
+          <div style={{fontSize:11,color:"#94a3b8",letterSpacing:2,fontWeight:700,marginBottom:8}}>ANDAMENTO MEDIO-LUNGO PERIODO — fonte Lops {lastUpdate}</div>
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}>
               <thead>
