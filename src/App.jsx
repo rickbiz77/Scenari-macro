@@ -682,14 +682,10 @@ export default function App(){
   const sc=sel?SCENARIOS.find(s=>s.id===sel):null;
 
   useEffect(function(){
-    // Restore from localStorage only
+    // Restore only INDICATORS and date from localStorage
     try{
       var savedInd=localStorage.getItem("pr_indicators");
       if(savedInd){var ind=JSON.parse(savedInd);Object.keys(ind).forEach(function(k){INDICATORS[k]=ind[k];});}
-      var savedNaz=localStorage.getItem("pr_nazionali");
-      if(savedNaz){var naz=JSON.parse(savedNaz);if(naz.length>0){ETF_NAZIONALI.length=0;naz.forEach(function(e){ETF_NAZIONALI.push(e);});}}
-      var savedEtf=localStorage.getItem("pr_scenarios");
-      if(savedEtf){var se=JSON.parse(savedEtf);SCENARIOS.forEach(function(s){if(se[s.id]){if(se[s.id].etfs&&se[s.id].etfs.length>0)s.etfs=se[s.id].etfs;if(se[s.id].avg)Object.assign(s.avg,se[s.id].avg);}});}
       var savedDate=localStorage.getItem("pr_lastupdate");
       if(savedDate)setLastUpdate(savedDate);
     }catch(e){}
@@ -817,7 +813,7 @@ export default function App(){
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center"}}>
-          <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:6,padding:"5px 10px",fontSize:9,color:"#6b7280"}}>📅 {lastUpdate}</div>
+
         </div>
       </div>
       <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
@@ -1163,7 +1159,7 @@ export default function App(){
       const col=riskColor(riskScore);
       const pct=riskScore/100;
       return <div>
-        <div style={{fontSize:8,color:"#6b7280",letterSpacing:2,marginBottom:16}}>RISK ON / RISK OFF — score da 62 indicatori macro · agg. {lastUpdate}</div>
+        <div style={{fontSize:8,color:"#6b7280",letterSpacing:2,marginBottom:16}}>RISK ON / RISK OFF — score da 62 indicatori macro · </div>
 
         {/* Gauge barra orizzontale */}
         <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:14,padding:20,marginBottom:12}}>
@@ -1359,7 +1355,7 @@ export default function App(){
         }
 
         return <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          <div style={{fontSize:8,color:"#6b7280",letterSpacing:1,marginBottom:4}}>ETF NAZIONALI — 26 paesi · ordinati per momentum ↓ · agg. {lastUpdate}</div>
+          <div style={{fontSize:8,color:"#6b7280",letterSpacing:1,marginBottom:4}}>ETF NAZIONALI — 26 paesi · ordinati per momentum ↓ · </div>
           {nazWithScore.map((e,i)=><NazCard key={e.t} e={e} i={i}/>)}
         </div>;
       })()}
@@ -1452,7 +1448,7 @@ export default function App(){
       {/* Leading score per scenario */}
       <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:10,padding:14}}>
         <div style={{fontSize:9,color:"#6b7280",letterSpacing:2,marginBottom:4}}>LEADING SCORE PER SCENARIO</div>
-        <div style={{fontSize:8,color:"#374151",marginBottom:10}}>45 indicatori macro da claude checklist — agg. {lastUpdate}</div>
+        <div style={{fontSize:8,color:"#374151",marginBottom:10}}>45 indicatori macro da claude checklist — </div>
         <div style={{display:"flex",flexDirection:"column",gap:6}}>
           {[...SCENARIOS].sort((a,b)=>(leadMap[b.id]??-999)-(leadMap[a.id]??-999)).map(s=>{
             const l=leadMap[s.id];
@@ -1699,7 +1695,7 @@ export default function App(){
 
       // Render categorie affiancate BCE|FED alla stessa altezza
       return <div>
-        <div style={{fontSize:8,color:"#6b7280",letterSpacing:2,marginBottom:12}}>POSIZIONAMENTO BANCHE CENTRALI — agg. {lastUpdate} · score normalizzato per categoria</div>
+        <div style={{fontSize:8,color:"#6b7280",letterSpacing:2,marginBottom:12}}>POSIZIONAMENTO BANCHE CENTRALI —  · score normalizzato per categoria</div>
         {/* Header cards */}
         <div style={{display:"flex",gap:12,marginBottom:16}}>
           <div style={{flex:1}}><HeaderCard name="BCE" flag="🇪🇺" score={bceScore}/></div>
@@ -1754,7 +1750,7 @@ export default function App(){
 
       <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:10,padding:14}}>
         <div style={{fontSize:11,color:"#818cf8",letterSpacing:2,fontWeight:700,marginBottom:2}}>LEADING SCORE</div>
-        <div style={{fontSize:8,color:"#374151",marginBottom:10}}>45 indicatori macro — agg. {lastUpdate}</div>
+        <div style={{fontSize:8,color:"#374151",marginBottom:10}}>45 indicatori macro — </div>
         <ResponsiveContainer width="100%" height={160}>
           <BarChart data={[...SCENARIOS].sort((a,b)=>(leadMap[b.id]??0)-(leadMap[a.id]??0)).map(s=>({name:s.name.replace(" AGGRESSIVO","").replace("/SOFT LANDING",""),val:Math.round(leadMap[s.id]??0)}))} margin={{top:0,right:0,bottom:40,left:0}}>
             <XAxis dataKey="name" tick={{fontSize:7,fill:"#6b7280"}} angle={-25} textAnchor="end" interval={0}/>
@@ -1820,7 +1816,7 @@ export default function App(){
         const col=v=>v>0?"#10B981":v<0?"#EF4444":"#6b7280";
         const fmt=v=>(v>0?"+":"")+v.toFixed(2)+"%";
         return <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:10,padding:12}}>
-          <div style={{fontSize:11,color:"#94a3b8",letterSpacing:2,fontWeight:700,marginBottom:8}}>ANDAMENTO BREVE PERIODO — fonte Lops {lastUpdate}</div>
+          <div style={{fontSize:11,color:"#94a3b8",letterSpacing:2,fontWeight:700,marginBottom:8}}>ANDAMENTO BREVE PERIODO — fonte Lops </div>
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}>
               <thead>
@@ -1859,7 +1855,7 @@ export default function App(){
         const col=v=>v>0?"#10B981":v<0?"#EF4444":"#6b7280";
         const fmt=v=>(v>0?"+":"")+v.toFixed(2)+"%";
         return <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:10,padding:12}}>
-          <div style={{fontSize:11,color:"#94a3b8",letterSpacing:2,fontWeight:700,marginBottom:8}}>ANDAMENTO MEDIO-LUNGO PERIODO — fonte Lops {lastUpdate}</div>
+          <div style={{fontSize:11,color:"#94a3b8",letterSpacing:2,fontWeight:700,marginBottom:8}}>ANDAMENTO MEDIO-LUNGO PERIODO — fonte Lops </div>
           <div style={{overflowX:"auto"}}>
             <table style={{width:"100%",borderCollapse:"collapse",fontSize:10}}>
               <thead>
