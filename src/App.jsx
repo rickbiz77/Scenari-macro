@@ -582,7 +582,7 @@ function parseNazionaliCSV(text){
   return etfs;
 }
 function parseMacroText(text){
-  var TM={"T10Y2Y":"yieldCurve","VIX":"vix","MOVE":"move","USBCOI":"ism","USMNO":"ismNewOrders","USMEMP":"ismEmployment","USMPR":"ismPricesPaid","USCIR":"cpi","USPPIYY":"ppi","USCPCEPIAC":"pce","USCCEPIAC":"pce","USPPIMM":"ppiMom","USCPCEPIMM":"pceMom","USIRMM":"cpiMom","DTB3":"dtb3","SOFR":"sofr","EUJVR":"eujvr","EUUR":"euur","EUIRYY":"euCpi","EUIRMM":"euCpiMom","EUCIRMM":"euCpiCoreMom","EUPPIMM":"euPpiMom","EUPPIYY":"euPpiYoy","DEPPIMM":"deppimm","DEPPIYY":"deppiyy","EURSYY":"eursyy","USRSYY":"retailSales","USHST":"housingStarts","M2SL/DXY":"m2Dxy","VVIX/VIX":"vvixVix","USNFP":"nfp","TRIN.NY":"trin","ATHI.NY":"athi","ATLO.NY":"atlo","USALOLITOAASTSAM":"lei","TRJEFFCRB":"crb","BDI":"bdi","DEIFOE":"ifo","USIJC":"jobless","USCFNAI":"cfnai","USCENAI":"cfnai","BAMLCOA0CM":"igSpread","BAMLCOAOCM":"igSpread","BAMLC0A0CM":"igSpread","BAMLHOAOHYM2":"hySpread","BAMLH0A0HYM2":"hySpread","BAMLEMHBHYCRPIOAS":"emSpread","PCC":"pcc","PCCE":"pcce","US10Y":"us10y","DFII10":"realYield","T5YIE":"breakeven","USO2Y":"us2y","US02Y":"us2y","US10Y-DE10Y":"spread10y","US1OY-DE10Y":"spread10y","US10Y-DE1OY":"spread10y","DE10Y-DE02Y":"deCurve","USO2Y-DEO2Y":"spread2y","US02Y-DE02Y":"spread2y","USO2Y-DE02Y":"spread2y","US02Y-DEO2Y":"spread2y","IT10Y-DE10Y":"btpBund","IT1OY-DE10Y":"btpBund","DE10Y":"de10y","DEO2Y":"de02y","DE02Y":"de02y","EURUSD":"eurusd","DXY":"dxy","USOIL":"oil","HG1!/GC1!":"copperGold","HG 1!/GC1!":"copperGold","SPX":"spx","SX5E":"sx5e","11!":"euribor","USCPPMM":"ppiCoreMom","USCIRMM":"cpiCoreMom"};
+  var TM={"T10Y2Y":"yieldCurve","VIX":"vix","MOVE":"move","USBCOI":"ism","USMNO":"ismNewOrders","USMEMP":"ismEmployment","USMPR":"ismPricesPaid","USCIR":"cpi","USPPIYY":"ppi","USCPCEPIAC":"pce","USCCEPIAC":"pce","USPPIMM":"ppiMom","USCPCEPIMM":"pceMom","USIRMM":"cpiMom","DTB3":"dtb3","SOFR":"sofr","EUJVR":"eujvr","EUUR":"euur","EUIRYY":"euCpi","EUIRMM":"euCpiMom","EUCIRMM":"euCpiCoreMom","EUPPIMM":"euPpiMom","EUPPIYY":"euPpiYoy","DEPPIMM":"deppimm","DEPPIYY":"deppiyy","EURSYY":"eursyy","USRSYY":"retailSales","USHST":"housingStarts","M2SL/DXY":"m2Dxy","VVIX/VIX":"vvixVix","USNFP":"nfp","TRIN.NY":"trin","ATHI.NY":"athi","ATLO.NY":"atlo","USALOLITOAASTSAM":"lei","TRJEFFCRB":"crb","BDI":"bdi","DEIFOE":"ifo","USIJC":"jobless","USCFNAI":"cfnai","USCENAI":"cfnai","BAMLCOA0CM":"igSpread","BAMLCOAOCM":"igSpread","BAMLC0A0CM":"igSpread","BAMLHOAOHYM2":"hySpread","BAMLH0A0HYM2":"hySpread","BAMLEMHBHYCRPIOAS":"emSpread","PCC":"pcc","PCCE":"pcce","US10Y":"us10y","DFII10":"realYield","T5YIE":"breakeven","USO2Y":"us2y","US02Y":"us2y","US10Y-DE10Y":"spread10y","US1OY-DE10Y":"spread10y","US10Y-DE1OY":"spread10y","DE10Y-DE02Y":"deCurve","USO2Y-DEO2Y":"spread2y","US02Y-DE02Y":"spread2y","USO2Y-DE02Y":"spread2y","US02Y-DEO2Y":"spread2y","IT10Y-DE10Y":"btpBund","IT1OY-DE10Y":"btpBund","DE10Y":"de10y","DEO2Y":"de02y","DE02Y":"de02y","EURUSD":"eurusd","DXY":"dxy","USOIL":"oil","HG1!/GC1!":"copperGold","HG 1!/GC1!":"copperGold","SPX":"spx","SX5E":"sx5e","11!":"euribor","USCPPMM":"ppiCoreMom","USCIRMM":"cpiCoreMom","USBCOL":"ism","USBCOI":"ism","USOLL":"oil","USOIL":"oil","BAMLCOACM":"igSpread","BAMLCOAOCM":"igSpread","USCCEPIMM":"pceMom","USCPCEPIMM":"pceMom"};
   var upd={};
   var lines=text.split("\n");
   function extractNum(s){
@@ -677,8 +677,25 @@ export default function App(){
   const [refreshMsg,setRefreshMsg]=useState("");
   const [macroText,setMacroText]=useState("");
   const [renderKey,setRenderKey]=useState(0);
+  const [lastUpdate,setLastUpdate]=useState(LAST_UPDATE);
 
   const sc=sel?SCENARIOS.find(s=>s.id===sel):null;
+
+  useEffect(function(){
+    // Restore from localStorage
+    try{
+      var savedInd=localStorage.getItem("pr_indicators");
+      if(savedInd){var ind=JSON.parse(savedInd);Object.keys(ind).forEach(function(k){INDICATORS[k]=ind[k];});}
+      var savedNaz=localStorage.getItem("pr_nazionali");
+      if(savedNaz){var naz=JSON.parse(savedNaz);if(naz.length>0){ETF_NAZIONALI.length=0;naz.forEach(function(e){ETF_NAZIONALI.push(e);});}}
+      var savedEtf=localStorage.getItem("pr_scenarios");
+      if(savedEtf){var se=JSON.parse(savedEtf);SCENARIOS.forEach(function(s){if(se[s.id]){if(se[s.id].etfs&&se[s.id].etfs.length>0)s.etfs=se[s.id].etfs;if(se[s.id].avg)Object.assign(s.avg,se[s.id].avg);}});}
+      var savedDate=localStorage.getItem("pr_lastupdate");
+      if(savedDate)setLastUpdate(savedDate);
+    }catch(e){}
+    // Auto-refresh ETF
+    fetchEtfData();
+  },[]);
 
   async function fetchEtfData(){
     const URL_SC="https://docs.google.com/spreadsheets/d/e/2PACX-1vRtcPnQypnAxhDUn308spHSKmQM1pbLfImqfVz4XLR79h-HUUmNIHBElCbFSkUAvctO6IKGPn4c9d0k/pub?gid=0&single=true&output=csv";
@@ -692,7 +709,13 @@ export default function App(){
       const naz=parseNazionaliCSV(r2);
       if(naz.length>0){ETF_NAZIONALI.length=0;naz.forEach(function(e){ETF_NAZIONALI.push(e);});}
       const now=new Date();
-      setRefreshMsg("OK "+now.getHours()+":"+String(now.getMinutes()).padStart(2,"0"));
+      var ts="OK "+now.getHours()+":"+String(now.getMinutes()).padStart(2,"0");
+      setRefreshMsg(ts);
+      try{
+        var scenObj={};SCENARIOS.forEach(function(s){scenObj[s.id]={etfs:s.etfs,avg:s.avg};});
+        localStorage.setItem("pr_scenarios",JSON.stringify(scenObj));
+        localStorage.setItem("pr_nazionali",JSON.stringify(ETF_NAZIONALI));
+      }catch(e){}
     }catch(e){setRefreshMsg("ERR: "+e.message);}
     setRefreshing(false);setRenderKey(function(k){return k+1;});
   }
@@ -1141,7 +1164,7 @@ export default function App(){
       const col=riskColor(riskScore);
       const pct=riskScore/100;
       return <div>
-        <div style={{fontSize:8,color:"#6b7280",letterSpacing:2,marginBottom:16}}>RISK ON / RISK OFF — score da 62 indicatori macro · agg. {LAST_UPDATE}</div>
+        <div style={{fontSize:8,color:"#6b7280",letterSpacing:2,marginBottom:16}}>RISK ON / RISK OFF — score da 62 indicatori macro · agg. {lastUpdate}</div>
 
         {/* Gauge barra orizzontale */}
         <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:14,padding:20,marginBottom:12}}>
