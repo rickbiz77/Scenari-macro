@@ -581,6 +581,57 @@ function parseNazionaliCSV(text){
   }
   return etfs;
 }
+function extractNum(s){
+  var tabs=s.trim().split("\t");
+  for(var i=tabs.length-1;i>=0;i--){
+  var p=tabs[i].trim();
+  if(!p)continue;
+  var hasPct=p.indexOf("%")>=0;
+  var raw=p.split("%")[0].split("USD")[0].split("EUR")[0].split("POINT")[0].split("K PSN")[0].split("PSN")[0].split("MUNIT")[0];
+  if(raw.indexOf(" B")>=0)raw=raw.split(" B")[0];
+  raw=raw.trim().split(" ,").join(",").split(", ").join(",");
+  if(!raw)continue;
+  var numStr="";
+  var neg=raw.charAt(0)==="-";
+  if(neg)raw=raw.substring(1);
+  if(raw.indexOf(",")>=0&&raw.indexOf(".")>=0){
+    var di=raw.indexOf(".");var ci=raw.indexOf(",");
+    if(di<ci){raw=raw.split(".").join("").split(",").join(".");}
+    else{raw=raw.split(",").join("");}
+    numStr=raw;
+  } else if(raw.indexOf(",")>=0){
+    var ps=raw.split(",");
+    var af=ps[ps.length-1];
+    var bf=ps[0];
+    if(af.length===3&&parseFloat(bf)>=1000){numStr=raw.split(",").join("");}
+    else{numStr=raw.split(",").join(".");}
+  } else if(raw.indexOf(".")>=0){
+    var ps2=raw.split(".");
+    var af2=ps2[ps2.length-1];
+    var bf2=ps2[0];
+    if(af2.length===3&&parseFloat(bf2)>=1000){numStr=raw.split(".").join("");}
+    else{numStr=raw;}
+  } else if(raw.indexOf(" ")>=0){
+    var sp=raw.split(" ");
+    if(sp.length===2&&sp[1].length===3){
+    if(sp[0].length<=1){numStr=sp[0]+"."+sp[1];}
+    else{numStr=sp[0]+sp[1];}
+    }
+    else{numStr=sp[0];}
+  } else {
+    numStr=raw;
+  }
+  if(neg)numStr="-"+numStr;
+  var n=parseFloat(numStr);
+  if(!isNaN(n)){
+    var afterNum=raw.substring(String(Math.abs(n)).replace(".","").length);
+    if(afterNum.length>0&&(afterNum.charAt(0)==="-"||/[a-zA-Z]/.test(afterNum.charAt(0))))continue;
+    return n;
+  }
+  }
+  return null;
+}
+
 function parseIndicatoriCSV(text){
   var TM={"T10Y2Y":"yieldCurve","VIX":"vix","MOVE":"move","USBCOI":"ism","USBCOL":"ism","USMNO":"ismNewOrders","USMEMP":"ismEmployment","USMPR":"ismPricesPaid","USCIR":"cpi","USPPIYY":"ppi","USCPCEPIAC":"pce","USCCEPIAC":"pce","USPPIMM":"ppiMom","USCPCEPIMM":"pceMom","USCCEPIMM":"pceMom","USIRMM":"cpiMom","DTB3":"dtb3","SOFR":"sofr","EUJVR":"eujvr","EUUR":"euur","EUIRYY":"euCpi","EUIRMM":"euCpiMom","EUCIRMM":"euCpiCoreMom","EUPPIMM":"euPpiMom","EUPPIYY":"euPpiYoy","DEPPIMM":"deppimm","DEPPIYY":"deppiyy","EURSYY":"eursyy","USRSYY":"retailSales","USHST":"housingStarts","M2SL/DXY":"m2Dxy","VVIX/VIX":"vvixVix","USNFP":"nfp","TRIN.NY":"trin","ATHI.NY":"athi","ATLO.NY":"atlo","USALOLITOAASTSAM":"lei","TRJEFFCRB":"crb","BDI":"bdi","DEIFOE":"ifo","USIJC":"jobless","USCFNAI":"cfnai","USCENAI":"cfnai","BAMLCOA0CM":"igSpread","BAMLCOAOCM":"igSpread","BAMLC0A0CM":"igSpread","BAMLCOACM":"igSpread","BAMLHOAOHYM2":"hySpread","BAMLH0A0HYM2":"hySpread","BAMLEMHBHYCRPIOAS":"emSpread","PCC":"pcc","PCCE":"pcce","US10Y":"us10y","DFII10":"realYield","T5YIE":"breakeven","USO2Y":"us2y","US02Y":"us2y","US10Y-DE10Y":"spread10y","US1OY-DE10Y":"spread10y","DE10Y-DE02Y":"deCurve","DE10Y-DEO2Y":"deCurve","USO2Y-DEO2Y":"spread2y","US02Y-DE02Y":"spread2y","IT10Y-DE10Y":"btpBund","IT1OY-DE10Y":"btpBund","DE10Y":"de10y","DEO2Y":"de02y","DE02Y":"de02y","EURUSD":"eurusd","DXY":"dxy","USOIL":"oil","USOLL":"oil","HG1!/GC1!":"copperGold","HG 1!/GC1!":"copperGold","SPX":"spx","SX5E":"sx5e","11!":"euribor","USCPPMM":"ppiCoreMom","USCIRMM":"cpiCoreMom"};
   var upd={};
@@ -614,58 +665,7 @@ function parseIndicatoriCSV(text){
 function parseMacroText(text){
   var TM={"T10Y2Y":"yieldCurve","VIX":"vix","MOVE":"move","USBCOI":"ism","USMNO":"ismNewOrders","USMEMP":"ismEmployment","USMPR":"ismPricesPaid","USCIR":"cpi","USPPIYY":"ppi","USCPCEPIAC":"pce","USCCEPIAC":"pce","USPPIMM":"ppiMom","USCPCEPIMM":"pceMom","USIRMM":"cpiMom","DTB3":"dtb3","SOFR":"sofr","EUJVR":"eujvr","EUUR":"euur","EUIRYY":"euCpi","EUIRMM":"euCpiMom","EUCIRMM":"euCpiCoreMom","EUPPIMM":"euPpiMom","EUPPIYY":"euPpiYoy","DEPPIMM":"deppimm","DEPPIYY":"deppiyy","EURSYY":"eursyy","USRSYY":"retailSales","USHST":"housingStarts","M2SL/DXY":"m2Dxy","VVIX/VIX":"vvixVix","USNFP":"nfp","TRIN.NY":"trin","ATHI.NY":"athi","ATLO.NY":"atlo","USALOLITOAASTSAM":"lei","TRJEFFCRB":"crb","BDI":"bdi","DEIFOE":"ifo","USIJC":"jobless","USCFNAI":"cfnai","USCENAI":"cfnai","BAMLCOA0CM":"igSpread","BAMLCOAOCM":"igSpread","BAMLC0A0CM":"igSpread","BAMLHOAOHYM2":"hySpread","BAMLH0A0HYM2":"hySpread","BAMLEMHBHYCRPIOAS":"emSpread","PCC":"pcc","PCCE":"pcce","US10Y":"us10y","DFII10":"realYield","T5YIE":"breakeven","USO2Y":"us2y","US02Y":"us2y","US10Y-DE10Y":"spread10y","US1OY-DE10Y":"spread10y","US10Y-DE1OY":"spread10y","DE10Y-DE02Y":"deCurve","USO2Y-DEO2Y":"spread2y","US02Y-DE02Y":"spread2y","USO2Y-DE02Y":"spread2y","US02Y-DEO2Y":"spread2y","IT10Y-DE10Y":"btpBund","IT1OY-DE10Y":"btpBund","DE10Y":"de10y","DEO2Y":"de02y","DE02Y":"de02y","EURUSD":"eurusd","DXY":"dxy","USOIL":"oil","HG1!/GC1!":"copperGold","HG 1!/GC1!":"copperGold","SPX":"spx","SX5E":"sx5e","11!":"euribor","USCPPMM":"ppiCoreMom","USCIRMM":"cpiCoreMom","USBCOL":"ism","USBCOI":"ism","USOLL":"oil","USOIL":"oil","BAMLCOACM":"igSpread","BAMLCOAOCM":"igSpread","USCCEPIMM":"pceMom","USCPCEPIMM":"pceMom"};
   var upd={};
-  var lines=text.split("\n");
-  function extractNum(s){
-    var tabs=s.trim().split("\t");
-    for(var i=tabs.length-1;i>=0;i--){
-      var p=tabs[i].trim();
-      if(!p)continue;
-      var hasPct=p.indexOf("%")>=0;
-      var raw=p.split("%")[0].split("USD")[0].split("EUR")[0].split("POINT")[0].split("K PSN")[0].split("PSN")[0].split("MUNIT")[0];
-      if(raw.indexOf(" B")>=0)raw=raw.split(" B")[0];
-      raw=raw.trim().split(" ,").join(",").split(", ").join(",");
-      if(!raw)continue;
-      var numStr="";
-      var neg=raw.charAt(0)==="-";
-      if(neg)raw=raw.substring(1);
-      if(raw.indexOf(",")>=0&&raw.indexOf(".")>=0){
-        var di=raw.indexOf(".");var ci=raw.indexOf(",");
-        if(di<ci){raw=raw.split(".").join("").split(",").join(".");}
-        else{raw=raw.split(",").join("");}
-        numStr=raw;
-      } else if(raw.indexOf(",")>=0){
-        var ps=raw.split(",");
-        var af=ps[ps.length-1];
-        var bf=ps[0];
-        if(af.length===3&&parseFloat(bf)>=1000){numStr=raw.split(",").join("");}
-        else{numStr=raw.split(",").join(".");}
-      } else if(raw.indexOf(".")>=0){
-        var ps2=raw.split(".");
-        var af2=ps2[ps2.length-1];
-        var bf2=ps2[0];
-        if(af2.length===3&&parseFloat(bf2)>=1000){numStr=raw.split(".").join("");}
-        else{numStr=raw;}
-      } else if(raw.indexOf(" ")>=0){
-        var sp=raw.split(" ");
-        if(sp.length===2&&sp[1].length===3){
-          if(sp[0].length<=1){numStr=sp[0]+"."+sp[1];}
-          else{numStr=sp[0]+sp[1];}
-        }
-        else{numStr=sp[0];}
-      } else {
-        numStr=raw;
-      }
-      if(neg)numStr="-"+numStr;
-      var n=parseFloat(numStr);
-      if(!isNaN(n)){
-        var afterNum=raw.substring(String(Math.abs(n)).replace(".","").length);
-        if(afterNum.length>0&&(afterNum.charAt(0)==="-"||/[a-zA-Z]/.test(afterNum.charAt(0))))continue;
-        return n;
-      }
-    }
-    return null;
-  }
-  var notFound=[];
+  var lines=text.split("\n");  var notFound=[];
   for(var li=0;li<lines.length;li++){
     var line=lines[li].split("\r").join("").trim();
     if(!line)continue;
