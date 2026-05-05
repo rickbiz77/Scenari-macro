@@ -746,13 +746,16 @@ export default function App(){
       var macroCount=0;
       try{
         const r3=await fetch(URL_MACRO).then(r=>r.text());
+        var macroLines=r3.split("\n").length;
         var macroUpd=parseIndicatoriCSV(r3);
         macroCount=Object.keys(macroUpd).length;
         if(macroCount>0){
           Object.keys(macroUpd).forEach(function(k){INDICATORS[k]=macroUpd[k];});
           try{localStorage.setItem("pr_indicators",JSON.stringify(INDICATORS));}catch(e){}
+        } else {
+          ts+=" [CSV:"+macroLines+"r]";
         }
-      }catch(e3){}
+      }catch(e3){ts+=" [ERR:"+e3.message+"]";}
       const now=new Date();
       var ts="OK "+now.getHours()+":"+String(now.getMinutes()).padStart(2,"0")+" | Macro: "+macroCount+"/62";
       setRefreshMsg(ts);
