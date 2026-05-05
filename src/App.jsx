@@ -744,20 +744,22 @@ export default function App(){
         if(naz&&naz.length>0){ETF_NAZIONALI.length=0;naz.forEach(function(e){ETF_NAZIONALI.push(e);});}
       }catch(e2){}
       var macroCount=0;
+      var macroDebug="";
       try{
         const r3=await fetch(URL_MACRO).then(r=>r.text());
         var macroLines=r3.split("\n").length;
+        var firstChars=r3.substring(0,40).replace(/\n/g,"N").replace(/\r/g,"R");
         var macroUpd=parseIndicatoriCSV(r3);
         macroCount=Object.keys(macroUpd).length;
         if(macroCount>0){
           Object.keys(macroUpd).forEach(function(k){INDICATORS[k]=macroUpd[k];});
           try{localStorage.setItem("pr_indicators",JSON.stringify(INDICATORS));}catch(e){}
         } else {
-          ts+=" [CSV:"+macroLines+"r]";
+          macroDebug=" | CSV:"+macroLines+"r | "+firstChars;
         }
-      }catch(e3){ts+=" [ERR:"+e3.message+"]";}
+      }catch(e3){macroDebug=" | ERR:"+e3.message;}
       const now=new Date();
-      var ts="OK "+now.getHours()+":"+String(now.getMinutes()).padStart(2,"0")+" | Macro: "+macroCount+"/62";
+      var ts="OK "+now.getHours()+":"+String(now.getMinutes()).padStart(2,"0")+" | Macro: "+macroCount+"/62"+macroDebug;
       setRefreshMsg(ts);
       try{
         var scenObj={};SCENARIOS.forEach(function(s){scenObj[s.id]={etfs:s.etfs,avg:s.avg};});
