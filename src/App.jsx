@@ -585,17 +585,26 @@ function parseIndicatoriCSV(text){
   var TM={"T10Y2Y":"yieldCurve","VIX":"vix","MOVE":"move","USBCOI":"ism","USBCOL":"ism","USMNO":"ismNewOrders","USMEMP":"ismEmployment","USMPR":"ismPricesPaid","USCIR":"cpi","USPPIYY":"ppi","USCPCEPIAC":"pce","USCCEPIAC":"pce","USPPIMM":"ppiMom","USCPCEPIMM":"pceMom","USCCEPIMM":"pceMom","USIRMM":"cpiMom","DTB3":"dtb3","SOFR":"sofr","EUJVR":"eujvr","EUUR":"euur","EUIRYY":"euCpi","EUIRMM":"euCpiMom","EUCIRMM":"euCpiCoreMom","EUPPIMM":"euPpiMom","EUPPIYY":"euPpiYoy","DEPPIMM":"deppimm","DEPPIYY":"deppiyy","EURSYY":"eursyy","USRSYY":"retailSales","USHST":"housingStarts","M2SL/DXY":"m2Dxy","VVIX/VIX":"vvixVix","USNFP":"nfp","TRIN.NY":"trin","ATHI.NY":"athi","ATLO.NY":"atlo","USALOLITOAASTSAM":"lei","TRJEFFCRB":"crb","BDI":"bdi","DEIFOE":"ifo","USIJC":"jobless","USCFNAI":"cfnai","USCENAI":"cfnai","BAMLCOA0CM":"igSpread","BAMLCOAOCM":"igSpread","BAMLC0A0CM":"igSpread","BAMLCOACM":"igSpread","BAMLHOAOHYM2":"hySpread","BAMLH0A0HYM2":"hySpread","BAMLEMHBHYCRPIOAS":"emSpread","PCC":"pcc","PCCE":"pcce","US10Y":"us10y","DFII10":"realYield","T5YIE":"breakeven","USO2Y":"us2y","US02Y":"us2y","US10Y-DE10Y":"spread10y","US1OY-DE10Y":"spread10y","DE10Y-DE02Y":"deCurve","DE10Y-DEO2Y":"deCurve","USO2Y-DEO2Y":"spread2y","US02Y-DE02Y":"spread2y","IT10Y-DE10Y":"btpBund","IT1OY-DE10Y":"btpBund","DE10Y":"de10y","DEO2Y":"de02y","DE02Y":"de02y","EURUSD":"eurusd","DXY":"dxy","USOIL":"oil","USOLL":"oil","HG1!/GC1!":"copperGold","HG 1!/GC1!":"copperGold","SPX":"spx","SX5E":"sx5e","11!":"euribor","USCPPMM":"ppiCoreMom","USCIRMM":"cpiCoreMom"};
   var upd={};
   var lines=text.split("\n");
-  for(var li=0;li<lines.length;li++){
+  var li=0;
+  while(li<lines.length){
     var line=lines[li].split("\r").join("");
-    var cols=pCSV(line);
-    if(!cols[0]||!cols[1])continue;
-    var cellA=cols[0].trim();
-    var firstLine=cellA.split("\n")[0].trim();
-    var tk=firstLine.toUpperCase();
+    li++;
+    if(!line.startsWith('"'))continue;
+    var tk=line.substring(1).trim();
+    if(!tk||tk.toUpperCase()==="INDICATORI MACRO")continue;
+    var valStr="";
+    if(li<lines.length){
+      var vline=lines[li].split("\r").join("");
+      li++;
+      if(vline.startsWith('",')){valStr=vline.substring(2);}
+      else if(vline.startsWith('"')){valStr=vline.substring(1);}
+      else{valStr=vline;}
+      valStr=valStr.trim().replace(/^"+/,"").replace(/"+$/,"").trim();
+    }
+    tk=tk.toUpperCase();
     var key=TM[tk];
     if(!key)continue;
-    var val=extractNum(cols[1]);
-    if(val===null)val=extractNum(cols[1]+" "+cols[2]);
+    var val=extractNum(valStr);
     if(key==="euribor"&&val!==null&&val>90)val=100-val;
     if(key==="housingStarts"&&val!==null&&val<10)val=val*1000;
     if(val!==null)upd[key]=val;
