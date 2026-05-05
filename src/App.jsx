@@ -581,6 +581,27 @@ function parseNazionaliCSV(text){
   }
   return etfs;
 }
+function parseIndicatoriCSV(text){
+  var TM={"T10Y2Y":"yieldCurve","VIX":"vix","MOVE":"move","USBCOI":"ism","USBCOL":"ism","USMNO":"ismNewOrders","USMEMP":"ismEmployment","USMPR":"ismPricesPaid","USCIR":"cpi","USPPIYY":"ppi","USCPCEPIAC":"pce","USCCEPIAC":"pce","USPPIMM":"ppiMom","USCPCEPIMM":"pceMom","USCCEPIMM":"pceMom","USIRMM":"cpiMom","DTB3":"dtb3","SOFR":"sofr","EUJVR":"eujvr","EUUR":"euur","EUIRYY":"euCpi","EUIRMM":"euCpiMom","EUCIRMM":"euCpiCoreMom","EUPPIMM":"euPpiMom","EUPPIYY":"euPpiYoy","DEPPIMM":"deppimm","DEPPIYY":"deppiyy","EURSYY":"eursyy","USRSYY":"retailSales","USHST":"housingStarts","M2SL/DXY":"m2Dxy","VVIX/VIX":"vvixVix","USNFP":"nfp","TRIN.NY":"trin","ATHI.NY":"athi","ATLO.NY":"atlo","USALOLITOAASTSAM":"lei","TRJEFFCRB":"crb","BDI":"bdi","DEIFOE":"ifo","USIJC":"jobless","USCFNAI":"cfnai","USCENAI":"cfnai","BAMLCOA0CM":"igSpread","BAMLCOAOCM":"igSpread","BAMLC0A0CM":"igSpread","BAMLCOACM":"igSpread","BAMLHOAOHYM2":"hySpread","BAMLH0A0HYM2":"hySpread","BAMLEMHBHYCRPIOAS":"emSpread","PCC":"pcc","PCCE":"pcce","US10Y":"us10y","DFII10":"realYield","T5YIE":"breakeven","USO2Y":"us2y","US02Y":"us2y","US10Y-DE10Y":"spread10y","US1OY-DE10Y":"spread10y","DE10Y-DE02Y":"deCurve","DE10Y-DEO2Y":"deCurve","USO2Y-DEO2Y":"spread2y","US02Y-DE02Y":"spread2y","IT10Y-DE10Y":"btpBund","IT1OY-DE10Y":"btpBund","DE10Y":"de10y","DEO2Y":"de02y","DE02Y":"de02y","EURUSD":"eurusd","DXY":"dxy","USOIL":"oil","USOLL":"oil","HG1!/GC1!":"copperGold","HG 1!/GC1!":"copperGold","SPX":"spx","SX5E":"sx5e","11!":"euribor","USCPPMM":"ppiCoreMom","USCIRMM":"cpiCoreMom"};
+  var upd={};
+  var lines=text.split("\n");
+  for(var li=0;li<lines.length;li++){
+    var line=lines[li].split("\r").join("");
+    var cols=pCSV(line);
+    if(!cols[0]||!cols[1])continue;
+    var cellA=cols[0].trim();
+    var firstLine=cellA.split("\n")[0].trim();
+    var tk=firstLine.toUpperCase();
+    var key=TM[tk];
+    if(!key)continue;
+    var val=extractNum(cols[1]);
+    if(val===null)val=extractNum(cols[1]+" "+cols[2]);
+    if(key==="euribor"&&val!==null&&val>90)val=100-val;
+    if(key==="housingStarts"&&val!==null&&val<10)val=val*1000;
+    if(val!==null)upd[key]=val;
+  }
+  return upd;
+}
 function parseMacroText(text){
   var TM={"T10Y2Y":"yieldCurve","VIX":"vix","MOVE":"move","USBCOI":"ism","USMNO":"ismNewOrders","USMEMP":"ismEmployment","USMPR":"ismPricesPaid","USCIR":"cpi","USPPIYY":"ppi","USCPCEPIAC":"pce","USCCEPIAC":"pce","USPPIMM":"ppiMom","USCPCEPIMM":"pceMom","USIRMM":"cpiMom","DTB3":"dtb3","SOFR":"sofr","EUJVR":"eujvr","EUUR":"euur","EUIRYY":"euCpi","EUIRMM":"euCpiMom","EUCIRMM":"euCpiCoreMom","EUPPIMM":"euPpiMom","EUPPIYY":"euPpiYoy","DEPPIMM":"deppimm","DEPPIYY":"deppiyy","EURSYY":"eursyy","USRSYY":"retailSales","USHST":"housingStarts","M2SL/DXY":"m2Dxy","VVIX/VIX":"vvixVix","USNFP":"nfp","TRIN.NY":"trin","ATHI.NY":"athi","ATLO.NY":"atlo","USALOLITOAASTSAM":"lei","TRJEFFCRB":"crb","BDI":"bdi","DEIFOE":"ifo","USIJC":"jobless","USCFNAI":"cfnai","USCENAI":"cfnai","BAMLCOA0CM":"igSpread","BAMLCOAOCM":"igSpread","BAMLC0A0CM":"igSpread","BAMLHOAOHYM2":"hySpread","BAMLH0A0HYM2":"hySpread","BAMLEMHBHYCRPIOAS":"emSpread","PCC":"pcc","PCCE":"pcce","US10Y":"us10y","DFII10":"realYield","T5YIE":"breakeven","USO2Y":"us2y","US02Y":"us2y","US10Y-DE10Y":"spread10y","US1OY-DE10Y":"spread10y","US10Y-DE1OY":"spread10y","DE10Y-DE02Y":"deCurve","USO2Y-DEO2Y":"spread2y","US02Y-DE02Y":"spread2y","USO2Y-DE02Y":"spread2y","US02Y-DEO2Y":"spread2y","IT10Y-DE10Y":"btpBund","IT1OY-DE10Y":"btpBund","DE10Y":"de10y","DEO2Y":"de02y","DE02Y":"de02y","EURUSD":"eurusd","DXY":"dxy","USOIL":"oil","HG1!/GC1!":"copperGold","HG 1!/GC1!":"copperGold","SPX":"spx","SX5E":"sx5e","11!":"euribor","USCPPMM":"ppiCoreMom","USCIRMM":"cpiCoreMom","USBCOL":"ism","USBCOI":"ism","USOLL":"oil","USOIL":"oil","BAMLCOACM":"igSpread","BAMLCOAOCM":"igSpread","USCCEPIMM":"pceMom","USCPCEPIMM":"pceMom"};
   var upd={};
@@ -701,17 +722,30 @@ export default function App(){
 
   async function fetchEtfData(){
     const URL_SC="https://docs.google.com/spreadsheets/d/e/2PACX-1vRtcPnQypnAxhDUn308spHSKmQM1pbLfImqfVz4XLR79h-HUUmNIHBElCbFSkUAvctO6IKGPn4c9d0k/pub?gid=0&single=true&output=csv";
+    const URL_MACRO="https://docs.google.com/spreadsheets/d/e/2PACX-1vRtcPnQypnAxhDUn308spHSKmQM1pbLfImqfVz4XLR79h-HUUmNIHBElCbFSkUAvctO6IKGPn4c9d0k/pub?gid=1320980954&single=true&output=csv";
     const URL_NAZ="https://docs.google.com/spreadsheets/d/e/2PACX-1vRtcPnQypnAxhDUn308spHSKmQM1pbLfImqfVz4XLR79h-HUUmNIHBElCbFSkUAvctO6IKGPn4c9d0k/pub?gid=2023978700&single=true&output=csv";
     setRefreshing(true);setRefreshMsg("Carico...");
     try{
       const r1=await fetch(URL_SC).then(r=>r.text());
-      const r2=await fetch(URL_NAZ).then(r=>r.text());
       const su=parseScenariCSV(r1);
       SCENARIOS.forEach(function(s){const u=su[s.id];if(u){if(u.etfs&&u.etfs.length>0)s.etfs=u.etfs;if(u.avg)Object.assign(s.avg,u.avg);}});
-      const naz=parseNazionaliCSV(r2);
-      if(naz.length>0){ETF_NAZIONALI.length=0;naz.forEach(function(e){ETF_NAZIONALI.push(e);});}
+      try{
+        const r2=await fetch(URL_NAZ).then(r=>r.text());
+        const naz=parseNazionaliCSV(r2);
+        if(naz&&naz.length>0){ETF_NAZIONALI.length=0;naz.forEach(function(e){ETF_NAZIONALI.push(e);});}
+      }catch(e2){}
+      var macroCount=0;
+      try{
+        const r3=await fetch(URL_MACRO).then(r=>r.text());
+        var macroUpd=parseIndicatoriCSV(r3);
+        macroCount=Object.keys(macroUpd).length;
+        if(macroCount>0){
+          Object.keys(macroUpd).forEach(function(k){INDICATORS[k]=macroUpd[k];});
+          try{localStorage.setItem("pr_indicators",JSON.stringify(INDICATORS));}catch(e){}
+        }
+      }catch(e3){}
       const now=new Date();
-      var ts="OK "+now.getHours()+":"+String(now.getMinutes()).padStart(2,"0");
+      var ts="OK "+now.getHours()+":"+String(now.getMinutes()).padStart(2,"0")+" | Macro: "+macroCount+"/62";
       setRefreshMsg(ts);
       try{
         var scenObj={};SCENARIOS.forEach(function(s){scenObj[s.id]={etfs:s.etfs,avg:s.avg};});
@@ -1910,19 +1944,7 @@ export default function App(){
           📌 SALVA SETTIMANA
         </button>
       </div>
-      <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:12,padding:16,marginBottom:12}}>
-        <div style={{fontSize:12,fontWeight:700,color:"#f8fafc",marginBottom:6}}>📡 Indicatori Macro</div>
-        <div style={{fontSize:10,color:"#6b7280",marginBottom:8}}>Copia la watchlist TradingView (tab-separated) e incolla qui sotto.</div>
-        <textarea value={macroText} onChange={function(e){setMacroText(e.target.value);}} placeholder="Incolla il testo da TradingView..." style={{width:"100%",minHeight:180,background:"#080812",color:"#94a3b8",border:"1px solid #1f2937",borderRadius:8,padding:"10px",fontSize:10,fontFamily:"monospace",resize:"vertical",boxSizing:"border-box",marginBottom:10}}/>
-        <div style={{display:"flex",gap:8}}>
-          <button onClick={applyMacroText} style={{background:"#10B981",color:"#000",border:"none",borderRadius:8,padding:"10px 20px",fontSize:12,fontWeight:800,cursor:"pointer",flex:1}}>
-            ✅ APPLICA INDICATORI
-          </button>
-          <button onClick={function(){window._macroUpdated={};setRefreshMsg("Reset conteggio");}} style={{background:"#374151",color:"#94a3b8",border:"none",borderRadius:8,padding:"10px 14px",fontSize:11,cursor:"pointer"}}>
-            🔄 Reset
-          </button>
-        </div>
-      </div>
+
       {refreshMsg&&<div style={{background:"#080812",border:"1px solid #1f2937",borderRadius:8,padding:"12px 14px",fontSize:10,color:"#F59E0B",fontWeight:600,wordBreak:"break-word"}}>{refreshMsg}</div>}
     </div>}
 
