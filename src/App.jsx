@@ -750,7 +750,7 @@ export default function App(){
         var macroLines=r3.split("\n").length;
         var firstChars=r3.substring(0,40).replace(/\n/g,"N").replace(/\r/g,"R");
         var macroUpd=parseIndicatoriCSV(r3);
-        macroCount=Object.keys(macroUpd).length;
+        macroCount=Object.keys(macroUpd).filter(function(k){return INDICATORS.hasOwnProperty(k);}).length;
         if(macroCount>0){
           Object.keys(macroUpd).forEach(function(k){INDICATORS[k]=macroUpd[k];});
           try{localStorage.setItem("pr_indicators",JSON.stringify(INDICATORS));}catch(e){}
