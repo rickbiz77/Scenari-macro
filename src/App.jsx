@@ -805,31 +805,18 @@ export default function App(){
     {week:15,update:"08/04/2026",scores:{goldilocks:81.6,recession:10.2,stagflation:48.6,reflation:90.2,disinflation:25.5,dollarweakness:70.8,deflation:0.0,dollarweaknessbtc:34.4,debasementbtc:61.8,debasement:100.0}},
     {week:16,update:"13/04/2026",scores:{goldilocks:81.6,recession:10.2,stagflation:48.6,reflation:90.2,disinflation:25.5,dollarweakness:70.8,deflation:0.0,dollarweaknessbtc:34.4,debasementbtc:61.8,debasement:100.0}},
     {week:17,update:"20/04/2026",scores:{goldilocks:90.5,recession:12.5,stagflation:45.2,reflation:70.1,disinflation:26.9,dollarweakness:59.5,deflation:0.0,dollarweaknessbtc:35.2,debasementbtc:80.9,debasement:100.0}},
-  {week:18,update:"27/04/2026",scores:{goldilocks:100,recession:9,stagflation:47,reflation:65,disinflation:25,dollarweakness:55,deflation:0,dollarweaknessbtc:34,debasementbtc:78,debasement:87}},
-    {week:19,update:"29/04/2026",scores:{goldilocks:100,recession:0,stagflation:73,reflation:81,disinflation:34,dollarweakness:64,deflation:10,dollarweaknessbtc:23,debasementbtc:46,debasement:55}},
-  {week:19,update:"29/04/2026",scores:{goldilocks:100,recession:0,stagflation:73,reflation:81,disinflation:34,dollarweakness:64,deflation:10,dollarweaknessbtc:23,debasementbtc:46,debasement:55}},
+    {week:18,update:"27/04/2026",scores:{goldilocks:100,recession:9,stagflation:47,reflation:65,disinflation:25,dollarweakness:55,deflation:0,dollarweaknessbtc:34,debasementbtc:78,debasement:87}},
     {week:19,update:"29/04/2026",scores:{goldilocks:100,recession:0,stagflation:73,reflation:81,disinflation:34,dollarweakness:64,deflation:10,dollarweaknessbtc:23,debasementbtc:46,debasement:55}},
   ];
 
   useEffect(()=>{
-    (async()=>{
-      try{
-        const res=await window.storage.get("momentum-history");
-        const stored=res?JSON.parse(res.value):[];
-        // Merge seed + stored, seed entries only if not already present
-        const merged=[...SEED_HISTORY];
-        stored.forEach(h=>{if(!merged.find(s=>s.week===h.week))merged.push(h);});
-        const curScores=Object.fromEntries(allMomScores.map(s=>[s.id,s.composite]));
-        const exists=merged.find(h=>h.week===CURRENT_WEEK);
-        const updated=exists?merged.map(h=>h.week===CURRENT_WEEK?{...h,scores:curScores,update:LAST_UPDATE}:h):[...merged,{week:CURRENT_WEEK,update:LAST_UPDATE,scores:curScores}].slice(-8);
-        try{await window.storage.set("momentum-history",JSON.stringify(updated));}catch{}
-        setHistory(updated);
-      }catch{
-        const curScores=Object.fromEntries(allMomScores.map(s=>[s.id,s.composite]));
-        const merged=[...SEED_HISTORY,{week:CURRENT_WEEK,update:LAST_UPDATE,scores:curScores}];
-        setHistory(merged);
-      }
-    })();
+    const curScores=Object.fromEntries(allMomScores.map(s=>[s.id,s.composite]));
+    setHistory(function(prevH){
+      var base=prevH.length>0?prevH:[...SEED_HISTORY];
+      var merged=base.filter(function(h){return h.week!==CURRENT_WEEK;});
+      merged.push({week:CURRENT_WEEK,update:LAST_UPDATE,scores:curScores});
+      return merged.sort(function(a,b){return a.week-b.week;}).slice(-8);
+    });
   },[]);
 
   function getSmoothedDelta(sid){
