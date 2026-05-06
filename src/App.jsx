@@ -734,13 +734,25 @@ export default function App(){
       const r1=await fetch(URL_SC).then(r=>r.text());
       if(!r1.trim().startsWith("<")){
         const su=parseScenariCSV(r1);
-        SCENARIOS.forEach(function(s){const u=su[s.id];if(u){if(u.etfs&&u.etfs.length>0)s.etfs=u.etfs;if(u.avg)Object.assign(s.avg,u.avg);}});
+        SCENARIOS.forEach(function(s){
+          const u=su[s.id];
+          if(u&&u.etfs&&u.etfs.length>0){
+            var validEtfs=u.etfs.filter(function(e){return e.p&&e.w!=null&&e.m!=null;});
+            if(validEtfs.length>=s.etfs.length*0.7){
+              s.etfs=u.etfs;
+              if(u.avg)Object.assign(s.avg,u.avg);
+            }
+          }
+        });
       }
       try{
         const r2=await fetch(URL_NAZ).then(r=>r.text());
         if(!r2.trim().startsWith("<")){
           const naz=parseNazionaliCSV(r2);
-          if(naz&&naz.length>0){ETF_NAZIONALI.length=0;naz.forEach(function(e){ETF_NAZIONALI.push(e);});}
+          const validNaz=naz?naz.filter(function(e){return e.p&&e.w!=null&&e.m!=null;}):[];
+          if(validNaz.length>=ETF_NAZIONALI.length*0.7&&validNaz.length>0){
+            ETF_NAZIONALI.length=0;naz.forEach(function(e){ETF_NAZIONALI.push(e);});
+          }
         }
       }catch(e2){}
       var macroCount=0;
