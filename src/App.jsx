@@ -10,7 +10,7 @@ function getISOWeek(s){
   const w1=new Date(j4); w1.setDate(j4.getDate()-((j4.getDay()+6)%7));
   return Math.floor((dt-w1)/(7*864e5))+1;
 }
-const CURRENT_WEEK=getISOWeek(LAST_UPDATE);
+const CURRENT_WEEK=(function(){const t=new Date();const d=String(t.getDate()).padStart(2,"0");const m=String(t.getMonth()+1).padStart(2,"0");const y=t.getFullYear();return getISOWeek(d+"/"+m+"/"+y);})();
 
 const MATRIX=[
   {name:"GOLDILOCKS",     active:false,color:"#10B981",v:[-0.05,4.40,-3.24,-3.73,-1.13,44.30,33.85,84.54,77.53]},
@@ -732,12 +732,16 @@ export default function App(){
     setRefreshing(true);setRefreshMsg("Carico...");
     try{
       const r1=await fetch(URL_SC).then(r=>r.text());
-      const su=parseScenariCSV(r1);
-      SCENARIOS.forEach(function(s){const u=su[s.id];if(u){if(u.etfs&&u.etfs.length>0)s.etfs=u.etfs;if(u.avg)Object.assign(s.avg,u.avg);}});
+      if(!r1.trim().startsWith("<")){
+        const su=parseScenariCSV(r1);
+        SCENARIOS.forEach(function(s){const u=su[s.id];if(u){if(u.etfs&&u.etfs.length>0)s.etfs=u.etfs;if(u.avg)Object.assign(s.avg,u.avg);}});
+      }
       try{
         const r2=await fetch(URL_NAZ).then(r=>r.text());
-        const naz=parseNazionaliCSV(r2);
-        if(naz&&naz.length>0){ETF_NAZIONALI.length=0;naz.forEach(function(e){ETF_NAZIONALI.push(e);});}
+        if(!r2.trim().startsWith("<")){
+          const naz=parseNazionaliCSV(r2);
+          if(naz&&naz.length>0){ETF_NAZIONALI.length=0;naz.forEach(function(e){ETF_NAZIONALI.push(e);});}
+        }
       }catch(e2){}
       var macroCount=0;
       var macroDebug="";
