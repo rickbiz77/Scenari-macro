@@ -512,6 +512,57 @@ const SCENARIO_CFG = {
 };
 
 // ── APP ───────────────────────────────────────────────────────────
+function extractNum(s){
+  var tabs=s.trim().split("\t");
+  for(var i=tabs.length-1;i>=0;i--){
+  var p=tabs[i].trim();
+  if(!p)continue;
+  var hasPct=p.indexOf("%")>=0;
+  var raw=p.split("%")[0].split("USD")[0].split("EUR")[0].split("POINT")[0].split("K PSN")[0].split("PSN")[0].split("MUNIT")[0];
+  if(raw.indexOf(" B")>=0)raw=raw.split(" B")[0];
+  raw=raw.trim().split(" ,").join(",").split(", ").join(",");
+  if(!raw)continue;
+  var numStr="";
+  var neg=raw.charAt(0)==="-";
+  if(neg)raw=raw.substring(1);
+  if(raw.indexOf(",")>=0&&raw.indexOf(".")>=0){
+    var di=raw.indexOf(".");var ci=raw.indexOf(",");
+    if(di<ci){raw=raw.split(".").join("").split(",").join(".");}
+    else{raw=raw.split(",").join("");}
+    numStr=raw;
+  } else if(raw.indexOf(",")>=0){
+    var ps=raw.split(",");
+    var af=ps[ps.length-1];
+    var bf=ps[0];
+    if(af.length===3&&parseFloat(bf)>=1000){numStr=raw.split(",").join("");}
+    else{numStr=raw.split(",").join(".");}
+  } else if(raw.indexOf(".")>=0){
+    var ps2=raw.split(".");
+    var af2=ps2[ps2.length-1];
+    var bf2=ps2[0];
+    if(af2.length===3&&parseFloat(bf2)>=1000){numStr=raw.split(".").join("");}
+    else{numStr=raw;}
+  } else if(raw.indexOf(" ")>=0){
+    var sp=raw.split(" ");
+    if(sp.length===2&&sp[1].length===3){
+    if(sp[0].length<=1){numStr=sp[0]+"."+sp[1];}
+    else{numStr=sp[0]+sp[1];}
+    }
+    else{numStr=sp[0];}
+  } else {
+    numStr=raw;
+  }
+  if(neg)numStr="-"+numStr;
+  var n=parseFloat(numStr);
+  if(!isNaN(n)){
+    var afterNum=raw.substring(String(Math.abs(n)).replace(".","").length);
+    if(afterNum.length>0&&(afterNum.charAt(0)==="-"||/[a-zA-Z]/.test(afterNum.charAt(0))))continue;
+    return n;
+  }
+  }
+  return null;
+}
+
 function pPct(s){
   if(!s||s==="#N/A"||s==="-"||s==="")return null;
   var t=s.toString().split("%")[0].split(" ")[0].split(" ")[0];
@@ -521,12 +572,7 @@ function pPct(s){
 }
 function pPx(s){
   if(!s)return null;
-  var t=s.toString().split(" ")[0];
-  var parts=t.split(",");
-  if(parts.length>1){t=parts.join("").split(".").join("").split(",").join(".");}
-  else{t=t.split(".").join("").split(",").join(".");}
-  var n=parseFloat(t);
-  return isNaN(n)?null:n;
+  return extractNum(s);
 }
 function pCSV(line){
   var r=[];var c="";var q=false;
@@ -581,57 +627,6 @@ function parseNazionaliCSV(text){
   }
   return etfs;
 }
-function extractNum(s){
-  var tabs=s.trim().split("\t");
-  for(var i=tabs.length-1;i>=0;i--){
-  var p=tabs[i].trim();
-  if(!p)continue;
-  var hasPct=p.indexOf("%")>=0;
-  var raw=p.split("%")[0].split("USD")[0].split("EUR")[0].split("POINT")[0].split("K PSN")[0].split("PSN")[0].split("MUNIT")[0];
-  if(raw.indexOf(" B")>=0)raw=raw.split(" B")[0];
-  raw=raw.trim().split(" ,").join(",").split(", ").join(",");
-  if(!raw)continue;
-  var numStr="";
-  var neg=raw.charAt(0)==="-";
-  if(neg)raw=raw.substring(1);
-  if(raw.indexOf(",")>=0&&raw.indexOf(".")>=0){
-    var di=raw.indexOf(".");var ci=raw.indexOf(",");
-    if(di<ci){raw=raw.split(".").join("").split(",").join(".");}
-    else{raw=raw.split(",").join("");}
-    numStr=raw;
-  } else if(raw.indexOf(",")>=0){
-    var ps=raw.split(",");
-    var af=ps[ps.length-1];
-    var bf=ps[0];
-    if(af.length===3&&parseFloat(bf)>=1000){numStr=raw.split(",").join("");}
-    else{numStr=raw.split(",").join(".");}
-  } else if(raw.indexOf(".")>=0){
-    var ps2=raw.split(".");
-    var af2=ps2[ps2.length-1];
-    var bf2=ps2[0];
-    if(af2.length===3&&parseFloat(bf2)>=1000){numStr=raw.split(".").join("");}
-    else{numStr=raw;}
-  } else if(raw.indexOf(" ")>=0){
-    var sp=raw.split(" ");
-    if(sp.length===2&&sp[1].length===3){
-    if(sp[0].length<=1){numStr=sp[0]+"."+sp[1];}
-    else{numStr=sp[0]+sp[1];}
-    }
-    else{numStr=sp[0];}
-  } else {
-    numStr=raw;
-  }
-  if(neg)numStr="-"+numStr;
-  var n=parseFloat(numStr);
-  if(!isNaN(n)){
-    var afterNum=raw.substring(String(Math.abs(n)).replace(".","").length);
-    if(afterNum.length>0&&(afterNum.charAt(0)==="-"||/[a-zA-Z]/.test(afterNum.charAt(0))))continue;
-    return n;
-  }
-  }
-  return null;
-}
-
 function parseIndicatoriCSV(text){
   var TM={"T10Y2Y":"yieldCurve","VIX":"vix","MOVE":"move","USBCOI":"ism","USBCOL":"ism","USMNO":"ismNewOrders","USMEMP":"ismEmployment","USMPR":"ismPricesPaid","USCIR":"cpi","USPPIYY":"ppi","USCPCEPIAC":"pce","USCCEPIAC":"pce","USPPIMM":"ppiMom","USCPCEPIMM":"pceMom","USCCEPIMM":"pceMom","USIRMM":"cpiMom","DTB3":"dtb3","SOFR":"sofr","EUJVR":"eujvr","EUUR":"euur","EUIRYY":"euCpi","EUIRMM":"euCpiMom","EUCIRMM":"euCpiCoreMom","EUPPIMM":"euPpiMom","EUPPIYY":"euPpiYoy","DEPPIMM":"deppimm","DEPPIYY":"deppiyy","EURSYY":"eursyy","USRSYY":"retailSales","USHST":"housingStarts","M2SL/DXY":"m2Dxy","VVIX/VIX":"vvixVix","USNFP":"nfp","TRIN.NY":"trin","ATHI.NY":"athi","ATLO.NY":"atlo","USALOLITOAASTSAM":"lei","TRJEFFCRB":"crb","BDI":"bdi","DEIFOE":"ifo","USIJC":"jobless","USCFNAI":"cfnai","USCENAI":"cfnai","BAMLCOA0CM":"igSpread","BAMLCOAOCM":"igSpread","BAMLC0A0CM":"igSpread","BAMLCOACM":"igSpread","BAMLHOAOHYM2":"hySpread","BAMLH0A0HYM2":"hySpread","BAMLEMHBHYCRPIOAS":"emSpread","PCC":"pcc","PCCE":"pcce","US10Y":"us10y","DFII10":"realYield","T5YIE":"breakeven","USO2Y":"us2y","US02Y":"us2y","US10Y-DE10Y":"spread10y","US1OY-DE10Y":"spread10y","DE10Y-DE02Y":"deCurve","DE10Y-DEO2Y":"deCurve","USO2Y-DEO2Y":"spread2y","US02Y-DE02Y":"spread2y","IT10Y-DE10Y":"btpBund","IT1OY-DE10Y":"btpBund","DE10Y":"de10y","DEO2Y":"de02y","DE02Y":"de02y","EURUSD":"eurusd","DXY":"dxy","USOIL":"oil","USOLL":"oil","HG1!/GC1!":"copperGold","HG 1!/GC1!":"copperGold","SPX":"spx","SX5E":"sx5e","11!":"euribor","USCPPMM":"ppiCoreMom","USCIRMM":"cpiCoreMom"};
   var upd={};
@@ -714,18 +709,19 @@ export default function App(){
   useEffect(function(){
     try{
       var savedInd=localStorage.getItem("pr_indicators");
-      if(savedInd){
-        var ind=JSON.parse(savedInd);
-        Object.keys(ind).forEach(function(k){INDICATORS[k]=ind[k];});
-      }
+      if(savedInd){var ind=JSON.parse(savedInd);Object.keys(ind).forEach(function(k){INDICATORS[k]=ind[k];});}
       var savedPrev=localStorage.getItem("pr_prev_indicators");
-      if(savedPrev){
-        var prev=JSON.parse(savedPrev);
-        Object.keys(prev).forEach(function(k){PREV_INDICATORS[k]=prev[k];});
+      if(savedPrev){var prev=JSON.parse(savedPrev);Object.keys(prev).forEach(function(k){PREV_INDICATORS[k]=prev[k];});}
+      var savedBaseline=localStorage.getItem("pr_week_baseline");
+      if(savedBaseline){
+        var bl=JSON.parse(savedBaseline);
+        setHistory(function(h){
+          var merged=h.filter(function(x){return x.week!==bl.week-1;});
+          merged.push({week:bl.week-1,scores:bl.scores,update:"prev"});
+          return merged.sort(function(a,b){return a.week-b.week;});
+        });
       }
-      if(savedInd||savedPrev)setRenderKey(function(k){return k+1;});
-      // ETF prev baseline stored separately - used by momentum delta calc
-      // window._etfPrev available for future use
+      setRenderKey(function(k){return k+1;});
     }catch(e){}
   },[]);
 
@@ -1948,11 +1944,12 @@ export default function App(){
         </button>
         <button onClick={function(){
           try{
-            var snap={};
-            SCENARIOS.forEach(function(s){snap[s.id]=JSON.parse(JSON.stringify(s.etfs));});
-            localStorage.setItem("pr_etf_prev",JSON.stringify(snap));
+            var scores={};
+            allMomScores.forEach(function(s){scores[s.id]=s.composite;});
+            var weekEntry={week:CURRENT_WEEK,scores:scores,savedAt:new Date().toISOString()};
+            localStorage.setItem("pr_week_baseline",JSON.stringify(weekEntry));
             var now=new Date();
-            setRefreshMsg("📌 Baseline salvata "+now.getHours()+":"+String(now.getMinutes()).padStart(2,"0"));
+            setRefreshMsg("📌 Baseline W"+CURRENT_WEEK+" salvata "+now.getHours()+":"+String(now.getMinutes()).padStart(2,"0"));
           }catch(e){setRefreshMsg("Errore salvataggio");}
         }} style={{background:"#1e3a5f",color:"#60a5fa",border:"1px solid #3b82f6",borderRadius:8,padding:"8px 20px",fontSize:11,fontWeight:700,cursor:"pointer",width:"100%",marginTop:6}}>
           📌 SALVA SETTIMANA
