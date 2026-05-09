@@ -738,31 +738,43 @@ export default function App(){
   const sc=sel?SCENARIOS.find(s=>s.id===sel):null;
 
   useEffect(function(){
+    // 1. Ripristina ETF e indicatori da localStorage
     try{
-      // Ripristina scenari dal localStorage
       var savedScen=localStorage.getItem("pr_scenarios");
       if(savedScen){try{var sc=JSON.parse(savedScen);SCENARIOS.forEach(function(s){if(sc[s.id]&&sc[s.id].etfs&&sc[s.id].etfs.length>0){s.etfs=sc[s.id].etfs;if(sc[s.id].avg)Object.assign(s.avg,sc[s.id].avg);}});}catch(e){}}
-      // Ripristina ETF nazionali dal localStorage
       var savedNaz=localStorage.getItem("pr_nazionali");
       if(savedNaz){try{var naz=JSON.parse(savedNaz);if(naz&&naz.length>0){ETF_NAZIONALI.length=0;naz.forEach(function(e){ETF_NAZIONALI.push(e);});}}catch(e){}}
-      // Ripristina indicatori
       var savedInd=localStorage.getItem("pr_indicators");
       if(savedInd){var ind=JSON.parse(savedInd);Object.keys(ind).forEach(function(k){INDICATORS[k]=ind[k];});}
       var savedPrev=localStorage.getItem("pr_prev_indicators");
       if(savedPrev){var prev=JSON.parse(savedPrev);Object.keys(prev).forEach(function(k){PREV_INDICATORS[k]=prev[k];});}
-      var savedBaseline=localStorage.getItem("pr_week_baseline");
-      if(savedBaseline){
-        var bl=JSON.parse(savedBaseline);
-        // La baseline è salvata PRIMA del refresh — rappresenta la settimana precedente
-        // La inseriamo con week corrente; il secondo useEffect aggiunge poi current con nuovi score
-        setHistory(function(h){
-          var merged=h.filter(function(x){return x.week!==bl.week;});
-          merged.push({week:bl.week,scores:bl.scores,update:"auto"});
-          return merged.sort(function(a,b){return a.week-b.week;});
-        });
-      }
-      setRenderKey(function(k){return k+1;});
     }catch(e){}
+    // 2. Carica history da Google Drive (permanente, cross-device)
+    fetch("https://drive.google.com/uc?export=download&id=1hHj5S1MbOpaBfRJJwXa-Zo3bnuF4_5Y4")
+      .then(function(r){return r.json();})
+      .then(function(data){
+        if(data&&data.history&&data.history.length>0){
+          setHistory(function(h){
+            var merged=[...SEED_HISTORY];
+            data.history.forEach(function(entry){
+              var exists=merged.findIndex(function(x){return x.week===entry.week;});
+              if(exists>=0)merged[exists]=entry;
+              else merged.push(entry);
+            });
+            return merged.sort(function(a,b){return a.week-b.week;});
+          });
+        }
+      })
+      .catch(function(){
+        // Fallback: usa localStorage se Drive non raggiungibile
+        try{
+          var bl=JSON.parse(localStorage.getItem("pr_week_baseline")||"null");
+          if(bl){setHistory(function(h){var m=h.filter(function(x){return x.week!==bl.week;});m.push({week:bl.week,scores:bl.scores,update:"auto"});return m.sort(function(a,b){return a.week-b.week;});});}
+        }catch(e){}
+      })
+      .finally(function(){
+        setRenderKey(function(k){return k+1;});
+      });
   },[]);
 
   function autoSavePrevScores(){
@@ -885,6 +897,8 @@ export default function App(){
   ];
 
   useEffect(()=>{
+    // Dipende da renderKey — gira DOPO che il primo useEffect ha ripristinato localStorage
+    // Così i curScores sono calcolati sui dati reali, non su quelli hardcodati
     const curScores=Object.fromEntries(allMomScores.map(s=>[s.id,s.composite]));
     setHistory(function(prevH){
       var base=prevH.length>0?prevH:[...SEED_HISTORY];
@@ -892,7 +906,7 @@ export default function App(){
       merged.push({week:CURRENT_WEEK,update:LAST_UPDATE,scores:curScores});
       return merged.sort(function(a,b){return a.week-b.week;}).slice(-8);
     });
-  },[]);
+  },[renderKey]);
 
   function getSmoothedDelta(sid){
     if(history.length<2)return null;
