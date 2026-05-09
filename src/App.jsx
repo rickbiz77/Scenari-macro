@@ -513,55 +513,70 @@ const SCENARIO_CFG = {
 
 // ── APP ───────────────────────────────────────────────────────────
 function extractNum(s){
+  if(!s||s==="-"||s==="#N/A"||s==="")return null;
   var tabs=s.trim().split("\t");
   for(var i=tabs.length-1;i>=0;i--){
-  var p=tabs[i].trim();
-  if(!p)continue;
-  var hasPct=p.indexOf("%")>=0;
-  var raw=p.split("%")[0].split("USD")[0].split("EUR")[0].split("POINT")[0].split("K PSN")[0].split("PSN")[0].split("MUNIT")[0];
-  if(raw.indexOf(" B")>=0)raw=raw.split(" B")[0];
-  raw=raw.trim().split(" ,").join(",").split(", ").join(",");
-  if(!raw)continue;
-  var numStr="";
-  var neg=raw.charAt(0)==="-";
-  if(neg)raw=raw.substring(1);
-  if(raw.indexOf(",")>=0&&raw.indexOf(".")>=0){
-    var di=raw.indexOf(".");var ci=raw.indexOf(",");
-    if(di<ci){raw=raw.split(".").join("").split(",").join(".");}
-    else{raw=raw.split(",").join("");}
-    numStr=raw;
-  } else if(raw.indexOf(",")>=0){
-    var ps=raw.split(",");
-    var af=ps[ps.length-1];
-    var bf=ps[0];
-    // "000" suffix is always thousands; also thousands if bf >= 1000
-    if(af.length===3&&(af==="000"||parseFloat(bf)>=1000)){numStr=raw.split(",").join("");}
-    else{numStr=raw.split(",").join(".");}
-  } else if(raw.indexOf(".")>=0){
-    var ps2=raw.split(".");
-    var af2=ps2[ps2.length-1];
-    var bf2=ps2[0];
-    // .000 suffix is always a thousands separator (e.g. 405.000 = 405000)
-    if(af2==="000"){numStr=raw.split(".").join("");}
-    else if(af2.length===3&&parseFloat(bf2)>=1000){numStr=raw.split(".").join("");}
-    else{numStr=raw;}
-  } else if(raw.indexOf(" ")>=0){
-    var sp=raw.split(" ");
-    if(sp.length===2&&sp[1].length===3){
-    if(sp[0].length<=1){numStr=sp[0]+"."+sp[1];}
-    else{numStr=sp[0]+sp[1];}
+    var p=tabs[i].trim();
+    if(!p)continue;
+    // Strip units
+    var raw=p.split("%")[0].split("USD")[0].split("EUR")[0]
+             .split("POINT")[0].split("K PSN")[0].split("PSN")[0]
+             .split("MUNIT")[0].split(" B")[0].trim();
+    if(!raw)continue;
+    var neg=raw.charAt(0)==="-";
+    if(neg)raw=raw.substring(1);
+    var numStr="";
+    var hasComma=raw.indexOf(",")>=0;
+    var hasDot=raw.indexOf(".")>=0;
+    if(hasComma&&hasDot){
+      // Both present: figure out which is thousands and which is decimal
+      var di=raw.indexOf(".");var ci=raw.indexOf(",");
+      if(di<ci){
+        // dot is thousands sep: 1.234,56
+        numStr=raw.split(".").join("").split(",").join(".");
+      } else {
+        // comma is thousands sep: 1,234.56
+        numStr=raw.split(",").join("");
+      }
+    } else if(hasComma&&!hasDot){
+      // Only comma: "2,978" or "1,235" or "405,000"
+      var parts=raw.split(",");
+      var after=parts[parts.length-1];
+      var before=parts[0];
+      // Thousands only if: suffix is "000" (e.g. "405,000") OR before >= 1000 (e.g. "1,234,567")
+      // Otherwise decimal: "3,880" → 3.880, "1,235" → 1.235
+      if(after.length===3&&(after==="000"||parseFloat(before)>=1000)){
+        numStr=raw.split(",").join("");
+      } else {
+        numStr=raw.split(",").join(".");
+      }
+    } else if(!hasComma&&hasDot){
+      // Only dot: e.g. "2.978" or "2.39" or "405.000" or "1.235"
+      var parts2=raw.split(".");
+      // Multiple dots: e.g. "1.234.567" → thousands
+      if(parts2.length>2){
+        numStr=raw.split(".").join("");
+      } else {
+        var after2=parts2[1];
+        var before2=parts2[0];
+        // .000 suffix → always thousands
+        if(after2==="000"){
+          numStr=raw.split(".").join("");
+        } else if(after2.length===3&&parseFloat(before2)>=1000){
+          // before >= 1000 and 3 digits after → definitely thousands
+          numStr=raw.split(".").join("");
+        } else {
+          // ambiguous: treat as decimal (safer for financial ratios/yields)
+          numStr=raw;
+        }
+      }
+    } else {
+      // No separator: plain integer
+      numStr=raw;
     }
-    else{numStr=sp[0];}
-  } else {
-    numStr=raw;
-  }
-  if(neg)numStr="-"+numStr;
-  var n=parseFloat(numStr);
-  if(!isNaN(n)){
-    var afterNum=raw.substring(String(Math.abs(n)).replace(".","").length);
-    if(afterNum.length>0&&(afterNum.charAt(0)==="-"||/[a-zA-Z]/.test(afterNum.charAt(0))))continue;
-    return n;
-  }
+    if(neg)numStr="-"+numStr;
+    var n=parseFloat(numStr);
+    if(!isNaN(n))return n;
   }
   return null;
 }
@@ -655,10 +670,13 @@ function parseIndicatoriCSV(text){
     if(!key)continue;
     var val=extractNum(valStr);
     if(key==="euribor"&&val!==null&&val>90)val=100-val;
-    if(key==="housingStarts"&&val!==null&&val<10)val=val*1000;
-    if(key==="bdi"&&val!==null&&val<100)val=val*1000;
-    if(key==="athi"&&val!==null&&val<1000)val=val*1000;
-    if(key==="atlo"&&val!==null&&val<1000)val=val*1000;
+    // Scaling post-parsing per indicatori con valori grandi (evita misparse italiano)
+    if(key==="housingStarts"&&val!==null&&val<10)val=val*1000;   // 1.5 → 1500
+    if(key==="bdi"&&val!==null&&val<100)val=val*1000;             // 2.978 → 2978
+    if(key==="spx"&&val!==null&&val<1000)val=val*1000;            // 7.230 → 7230
+    if(key==="sx5e"&&val!==null&&val<1000)val=val*1000;           // 5.881 → 5881
+    if(key==="athi"&&val!==null&&val<10000)val=val*1000;          // 405 → 405000
+    if(key==="atlo"&&val!==null&&val<10000)val=val*1000;          // 226 → 226000
     if(val!==null)upd[key]=val;
   }
   return upd;
@@ -688,10 +706,13 @@ function parseMacroText(text){
         val=extractNum(lines[li+2]);
       }
       if(key==="euribor"&&val!==null&&val>90)val=100-val;
+      // Scaling post-parsing per indicatori con valori grandi
       if(key==="housingStarts"&&val!==null&&val<10)val=val*1000;
       if(key==="bdi"&&val!==null&&val<100)val=val*1000;
-      if(key==="athi"&&val!==null&&val<1000)val=val*1000;
-      if(key==="atlo"&&val!==null&&val<1000)val=val*1000;
+      if(key==="spx"&&val!==null&&val<1000)val=val*1000;
+      if(key==="sx5e"&&val!==null&&val<1000)val=val*1000;
+      if(key==="athi"&&val!==null&&val<10000)val=val*1000;
+      if(key==="atlo"&&val!==null&&val<10000)val=val*1000;
       if(val!==null)upd[key]=val;
     }
   }
