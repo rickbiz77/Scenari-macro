@@ -265,7 +265,7 @@ function sortedScenarios(){return[...SCENARIOS].sort((a,b)=>{const am=a.avg.m??-
 // ── INDICATORI MACRO — aggiornati da screenshot claude checklist ──
 const INDICATORS = {
   yieldCurve:0.51, vix:16.98,  move:70.41,  ism:52.7,   ismNewOrders:54.1, ismEmployment:46.4, ismPricesPaid:84.6,
-  cpi:2.6,         ppi:4.0,    pce:3.2,     tedSpread:0.09, crb:393.40, bdi:2730,  ifo:83.3,
+  cpi:2.6,         ppi:4.0,    pce:3.2,     tedSpread:0.09, crb:393.40, bdi:2978,  ifo:83.3,
   euCpi:3.0,       jobless:189, lei:100.89, cfnai:-0.20,
   igSpread:0.81,   hySpread:2.83, emSpread:3.28,
   pcc:0.760,       pcce:0.615,  realYield:1.94, breakeven:2.69,
@@ -274,7 +274,7 @@ const INDICATORS = {
   ppiMom:0.5,      ppiCoreMom:0.4, cpiMom:0.9, cpiCoreMom:0.3,
   euCpiMom:1.0,    euCpiCoreMom:0.8, euPpiMom:-0.7, euPpiYoy:-3.0,
   spread2y:1.235,  spread10y:1.330, pceMom:0.3, de02y:2.645,
-  athi:357000,     atlo:268000, trin:1.060,  spx:7230.12,
+  athi:405000,     atlo:226000, trin:1.060,  spx:7230.12,
   btpBund:0.818,   vvixVix:5.60,
   dtb3:3.59,       sofr:3.66,   euur:6.2,    eujvr:2.2,
   de10y:3.042,     eurusd:1.17192, sx5e:5881.51, eursyy:1.7,
@@ -534,13 +534,16 @@ function extractNum(s){
     var ps=raw.split(",");
     var af=ps[ps.length-1];
     var bf=ps[0];
-    if(af.length===3&&parseFloat(bf)>=1000){numStr=raw.split(",").join("");}
+    // "000" suffix is always thousands; also thousands if bf >= 1000
+    if(af.length===3&&(af==="000"||parseFloat(bf)>=1000)){numStr=raw.split(",").join("");}
     else{numStr=raw.split(",").join(".");}
   } else if(raw.indexOf(".")>=0){
     var ps2=raw.split(".");
     var af2=ps2[ps2.length-1];
     var bf2=ps2[0];
-    if(af2.length===3&&parseFloat(bf2)>=1000){numStr=raw.split(".").join("");}
+    // .000 suffix is always a thousands separator (e.g. 405.000 = 405000)
+    if(af2==="000"){numStr=raw.split(".").join("");}
+    else if(af2.length===3&&parseFloat(bf2)>=1000){numStr=raw.split(".").join("");}
     else{numStr=raw;}
   } else if(raw.indexOf(" ")>=0){
     var sp=raw.split(" ");
@@ -653,6 +656,9 @@ function parseIndicatoriCSV(text){
     var val=extractNum(valStr);
     if(key==="euribor"&&val!==null&&val>90)val=100-val;
     if(key==="housingStarts"&&val!==null&&val<10)val=val*1000;
+    if(key==="bdi"&&val!==null&&val<100)val=val*1000;
+    if(key==="athi"&&val!==null&&val<1000)val=val*1000;
+    if(key==="atlo"&&val!==null&&val<1000)val=val*1000;
     if(val!==null)upd[key]=val;
   }
   return upd;
@@ -683,6 +689,9 @@ function parseMacroText(text){
       }
       if(key==="euribor"&&val!==null&&val>90)val=100-val;
       if(key==="housingStarts"&&val!==null&&val<10)val=val*1000;
+      if(key==="bdi"&&val!==null&&val<100)val=val*1000;
+      if(key==="athi"&&val!==null&&val<1000)val=val*1000;
+      if(key==="atlo"&&val!==null&&val<1000)val=val*1000;
       if(val!==null)upd[key]=val;
     }
   }
