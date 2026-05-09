@@ -750,7 +750,7 @@ export default function App(){
       if(savedPrev){var prev=JSON.parse(savedPrev);Object.keys(prev).forEach(function(k){PREV_INDICATORS[k]=prev[k];});}
     }catch(e){}
     // 2. Carica history da Google Drive (permanente, cross-device)
-    fetch("https://drive.google.com/uc?export=download&id=1hHj5S1MbOpaBfRJJwXa-Zo3bnuF4_5Y4")
+    fetch("https://drive.google.com/uc?export=download&id=1s6nF7_paJNgNJmuRotNPOpZKRodp8jMl")
       .then(function(r){return r.json();})
       .then(function(data){
         if(data&&data.history&&data.history.length>0){
