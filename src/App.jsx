@@ -753,15 +753,33 @@ export default function App(){
       var savedBaseline=localStorage.getItem("pr_week_baseline");
       if(savedBaseline){
         var bl=JSON.parse(savedBaseline);
+        // La baseline è salvata PRIMA del refresh — rappresenta la settimana precedente
+        // La inseriamo con week corrente; il secondo useEffect aggiunge poi current con nuovi score
         setHistory(function(h){
           var merged=h.filter(function(x){return x.week!==bl.week;});
-          merged.push({week:bl.week,scores:bl.scores,update:"baseline"});
+          merged.push({week:bl.week,scores:bl.scores,update:"auto"});
           return merged.sort(function(a,b){return a.week-b.week;});
         });
       }
       setRenderKey(function(k){return k+1;});
     }catch(e){}
   },[]);
+
+  function autoSavePrevScores(){
+    // Salva baseline SOLO al primo refresh della settimana nuova
+    // I refresh successivi della stessa settimana non sovrascrivono
+    try{
+      var existing=localStorage.getItem("pr_week_baseline");
+      if(existing){
+        var bl=JSON.parse(existing);
+        if(bl.week===CURRENT_WEEK) return; // già salvata questa settimana, non sovrascrivere
+      }
+      // Prima volta questa settimana: salva score correnti come baseline
+      var scores={};
+      calcAllScores().forEach(function(s){scores[s.id]=s.composite;});
+      localStorage.setItem("pr_week_baseline",JSON.stringify({week:CURRENT_WEEK,scores:scores,savedAt:new Date().toISOString()}));
+    }catch(e){}
+  }
 
   async function fetchOneSheet(url, retries){
     for(var i=0;i<=retries;i++){
@@ -777,6 +795,7 @@ export default function App(){
     const URL_SC="https://docs.google.com/spreadsheets/d/e/2PACX-1vRtcPnQypnAxhDUn308spHSKmQM1pbLfImqfVz4XLR79h-HUUmNIHBElCbFSkUAvctO6IKGPn4c9d0k/pub?gid=0&single=true&output=csv";
     const URL_MACRO="https://docs.google.com/spreadsheets/d/e/2PACX-1vRtcPnQypnAxhDUn308spHSKmQM1pbLfImqfVz4XLR79h-HUUmNIHBElCbFSkUAvctO6IKGPn4c9d0k/pub?gid=1320980954&single=true&output=csv";
     const URL_NAZ="https://docs.google.com/spreadsheets/d/e/2PACX-1vRtcPnQypnAxhDUn308spHSKmQM1pbLfImqfVz4XLR79h-HUUmNIHBElCbFSkUAvctO6IKGPn4c9d0k/pub?gid=2023978700&single=true&output=csv";
+    autoSavePrevScores();
     setRefreshing(true);setRefreshMsg("Carico...");setFetchStatus({sc:null,naz:null,macro:null,time:null});
     var stSc=false,stNaz=false,stMacro=false;
     // Fetch tutti e 3 in parallelo con 2 retry ciascuno
@@ -2006,19 +2025,9 @@ export default function App(){
             </div>;
           })}
         </div>}
-        <button onClick={function(){
-          try{
-            var scores={};
-            allMomScores.forEach(function(s){scores[s.id]=s.composite;});
-            var weekEntry={week:CURRENT_WEEK,scores:scores,savedAt:new Date().toISOString()};
-            localStorage.setItem("pr_week_baseline",JSON.stringify(weekEntry));
-            var now=new Date();
-            setRefreshMsg("📌 Baseline W"+CURRENT_WEEK+" salvata "+now.getHours()+":"+String(now.getMinutes()).padStart(2,"0"));
-          }catch(e){setRefreshMsg("Errore salvataggio");}
-        }} style={{background:"#1e3a5f",color:"#60a5fa",border:"1px solid #3b82f6",borderRadius:8,padding:"8px 20px",fontSize:11,fontWeight:700,cursor:"pointer",width:"100%",marginTop:10}}>
-          📌 SALVA SETTIMANA (W{CURRENT_WEEK})
-        </button>
-        {refreshMsg&&refreshMsg.startsWith("📌")&&<div style={{background:"#080812",border:"1px solid #3b82f6",borderRadius:6,padding:"8px 12px",fontSize:10,color:"#60a5fa",fontWeight:600,marginTop:6}}>{refreshMsg}</div>}
+        <div style={{fontSize:9,color:"#4b5563",marginTop:8,padding:"6px 10px",background:"#080812",borderRadius:6}}>
+          ℹ️ Il delta momentum si aggiorna automaticamente ad ogni refresh — nessuna azione manuale richiesta.
+        </div>
       </div>
     </div>}
 
