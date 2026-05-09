@@ -766,18 +766,19 @@ export default function App(){
   },[]);
 
   function autoSavePrevScores(){
-    // Salva baseline SOLO al primo refresh della settimana nuova
-    // I refresh successivi della stessa settimana non sovrascrivono
+    // Salva baseline come CURRENT_WEEK-1 — così il secondo useEffect che aggiunge
+    // CURRENT_WEEK non la sovrascrive mai, nemmeno dopo F5
+    // Salva solo al primo refresh della settimana nuova
     try{
+      var prevWeek=CURRENT_WEEK-1;
       var existing=localStorage.getItem("pr_week_baseline");
       if(existing){
         var bl=JSON.parse(existing);
-        if(bl.week===CURRENT_WEEK) return; // già salvata questa settimana, non sovrascrivere
+        if(bl.week===prevWeek) return; // già salvata come settimana precedente, non sovrascrivere
       }
-      // Prima volta questa settimana: salva score correnti come baseline
       var scores={};
       calcAllScores().forEach(function(s){scores[s.id]=s.composite;});
-      localStorage.setItem("pr_week_baseline",JSON.stringify({week:CURRENT_WEEK,scores:scores,savedAt:new Date().toISOString()}));
+      localStorage.setItem("pr_week_baseline",JSON.stringify({week:prevWeek,scores:scores,savedAt:new Date().toISOString()}));
     }catch(e){}
   }
 
