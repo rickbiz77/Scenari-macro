@@ -708,6 +708,13 @@ export default function App(){
 
   useEffect(function(){
     try{
+      // Ripristina scenari dal localStorage
+      var savedScen=localStorage.getItem("pr_scenarios");
+      if(savedScen){try{var sc=JSON.parse(savedScen);SCENARIOS.forEach(function(s){if(sc[s.id]&&sc[s.id].etfs&&sc[s.id].etfs.length>0){s.etfs=sc[s.id].etfs;if(sc[s.id].avg)Object.assign(s.avg,sc[s.id].avg);}});}catch(e){}}
+      // Ripristina ETF nazionali dal localStorage
+      var savedNaz=localStorage.getItem("pr_nazionali");
+      if(savedNaz){try{var naz=JSON.parse(savedNaz);if(naz&&naz.length>0){ETF_NAZIONALI.length=0;naz.forEach(function(e){ETF_NAZIONALI.push(e);});}}catch(e){}}
+      // Ripristina indicatori
       var savedInd=localStorage.getItem("pr_indicators");
       if(savedInd){var ind=JSON.parse(savedInd);Object.keys(ind).forEach(function(k){INDICATORS[k]=ind[k];});}
       var savedPrev=localStorage.getItem("pr_prev_indicators");
@@ -716,8 +723,8 @@ export default function App(){
       if(savedBaseline){
         var bl=JSON.parse(savedBaseline);
         setHistory(function(h){
-          var merged=h.filter(function(x){return x.week!==bl.week-1;});
-          merged.push({week:bl.week-1,scores:bl.scores,update:"prev"});
+          var merged=h.filter(function(x){return x.week!==bl.week;});
+          merged.push({week:bl.week,scores:bl.scores,update:"baseline"});
           return merged.sort(function(a,b){return a.week-b.week;});
         });
       }
@@ -725,60 +732,65 @@ export default function App(){
     }catch(e){}
   },[]);
 
+  async function fetchOneSheet(url, retries){
+    for(var i=0;i<=retries;i++){
+      try{
+        var r=await fetch(url+"&t="+Date.now()).then(function(x){return x.text();});
+        if(!r.trim().startsWith("<"))return r;
+      }catch(e){}
+      if(i<retries)await new Promise(function(res){setTimeout(res,1500);});
+    }
+    return null;
+  }
   async function fetchEtfData(){
     const URL_SC="https://docs.google.com/spreadsheets/d/e/2PACX-1vRtcPnQypnAxhDUn308spHSKmQM1pbLfImqfVz4XLR79h-HUUmNIHBElCbFSkUAvctO6IKGPn4c9d0k/pub?gid=0&single=true&output=csv";
     const URL_MACRO="https://docs.google.com/spreadsheets/d/e/2PACX-1vRtcPnQypnAxhDUn308spHSKmQM1pbLfImqfVz4XLR79h-HUUmNIHBElCbFSkUAvctO6IKGPn4c9d0k/pub?gid=1320980954&single=true&output=csv";
     const URL_NAZ="https://docs.google.com/spreadsheets/d/e/2PACX-1vRtcPnQypnAxhDUn308spHSKmQM1pbLfImqfVz4XLR79h-HUUmNIHBElCbFSkUAvctO6IKGPn4c9d0k/pub?gid=2023978700&single=true&output=csv";
-    setRefreshing(true);setRefreshMsg("Carico...");
-    try{
-      const r1=await fetch(URL_SC).then(r=>r.text());
-      if(!r1.trim().startsWith("<")){
-        const su=parseScenariCSV(r1);
-        SCENARIOS.forEach(function(s){
-          const u=su[s.id];
-          if(u&&u.etfs&&u.etfs.length>0){
-            var validEtfs=u.etfs.filter(function(e){return e.p&&e.w!=null&&e.m!=null;});
-            if(validEtfs.length>=s.etfs.length*0.7){
-              s.etfs=u.etfs;
-              if(u.avg)Object.assign(s.avg,u.avg);
-            }
-          }
-        });
+    setRefreshing(true);setRefreshMsg("Carico...");setFetchStatus({sc:null,naz:null,macro:null,time:null});
+    var stSc=false,stNaz=false,stMacro=false;
+    // Fetch tutti e 3 in parallelo con 2 retry ciascuno
+    var [r1,r2,r3]=await Promise.all([fetchOneSheet(URL_SC,2),fetchOneSheet(URL_NAZ,2),fetchOneSheet(URL_MACRO,2)]);
+    // ── SCENARI ──
+    if(r1){
+      var su=parseScenariCSV(r1);
+      var scOk=0;
+      SCENARIOS.forEach(function(s){
+        var u=su[s.id];
+        if(u&&u.etfs&&u.etfs.length>0){
+          var valid=u.etfs.filter(function(e){return e.p&&e.w!=null&&e.m!=null;});
+          if(valid.length>=s.etfs.length*0.7){s.etfs=u.etfs;if(u.avg)Object.assign(s.avg,u.avg);scOk++;}
+        }
+      });
+      stSc=scOk>=SCENARIOS.length*0.7;
+      if(stSc){try{var so={};SCENARIOS.forEach(function(s){so[s.id]={etfs:s.etfs,avg:s.avg};});localStorage.setItem("pr_scenarios",JSON.stringify(so));}catch(e){}}
+    }
+    // ── ETF NAZIONALI ──
+    if(r2){
+      var naz=parseNazionaliCSV(r2);
+      var validNaz=naz?naz.filter(function(e){return e.p&&e.w!=null&&e.m!=null;}):[]; 
+      if(validNaz.length>=ETF_NAZIONALI.length*0.7&&validNaz.length>0){
+        ETF_NAZIONALI.length=0;naz.forEach(function(e){ETF_NAZIONALI.push(e);});
+        stNaz=true;
+        try{localStorage.setItem("pr_nazionali",JSON.stringify(ETF_NAZIONALI));}catch(e){}
       }
-      try{
-        const r2=await fetch(URL_NAZ).then(r=>r.text());
-        if(!r2.trim().startsWith("<")){
-          const naz=parseNazionaliCSV(r2);
-          const validNaz=naz?naz.filter(function(e){return e.p&&e.w!=null&&e.m!=null;}):[];
-          if(validNaz.length>=ETF_NAZIONALI.length*0.7&&validNaz.length>0){
-            ETF_NAZIONALI.length=0;naz.forEach(function(e){ETF_NAZIONALI.push(e);});
-          }
-        }
-      }catch(e2){}
-      var macroCount=0;
-      var macroDebug="";
-      try{
-        const r3=await fetch(URL_MACRO).then(r=>r.text());
-        var macroLines=r3.split("\n").length;
-        var firstChars=r3.substring(0,40).replace(/\n/g,"N").replace(/\r/g,"R");
-        var macroUpd=parseIndicatoriCSV(r3);
-        macroCount=Object.keys(macroUpd).filter(function(k){return INDICATORS.hasOwnProperty(k);}).length;
-        if(macroCount>0){
-          Object.keys(macroUpd).forEach(function(k){INDICATORS[k]=macroUpd[k];});
-          try{localStorage.setItem("pr_indicators",JSON.stringify(INDICATORS));}catch(e){}
-        } else {
-          macroDebug=" | CSV:"+macroLines+"r | "+firstChars;
-        }
-      }catch(e3){macroDebug=" | ERR:"+e3.message;}
-      const now=new Date();
-      var ts="OK "+now.getHours()+":"+String(now.getMinutes()).padStart(2,"0")+" | Macro: "+macroCount+"/62"+macroDebug;
-      setRefreshMsg(ts);
-      try{
-        var scenObj={};SCENARIOS.forEach(function(s){scenObj[s.id]={etfs:s.etfs,avg:s.avg};});
-        localStorage.setItem("pr_scenarios",JSON.stringify(scenObj));
-        localStorage.setItem("pr_nazionali",JSON.stringify(ETF_NAZIONALI));
-      }catch(e){}
-    }catch(e){setRefreshMsg("ERR: "+e.message);}
+    }
+    // ── INDICATORI MACRO ──
+    if(r3){
+      var macroUpd=parseIndicatoriCSV(r3);
+      var totalInd=Object.keys(INDICATORS).length;
+      var updKeys=Object.keys(macroUpd).filter(function(k){return INDICATORS.hasOwnProperty(k);});
+      // dedup: conta solo chiavi INDICATORS uniche aggiornate
+      var updSet=new Set(updKeys);
+      var macroCount=updSet.size;
+      if(macroCount>0){
+        updKeys.forEach(function(k){INDICATORS[k]=macroUpd[k];});
+        try{localStorage.setItem("pr_indicators",JSON.stringify(INDICATORS));}catch(e){}
+        stMacro=macroCount>=totalInd*0.5;
+      }
+    }
+    const now=new Date();
+    var ts=now.getHours()+":"+String(now.getMinutes()).padStart(2,"0");
+    setFetchStatus({sc:stSc,naz:stNaz,macro:stMacro,time:ts});
     setRefreshing(false);setRenderKey(function(k){return k+1;});
   }
 
@@ -1941,10 +1953,28 @@ export default function App(){
       <div style={{fontSize:8,color:"#6b7280",letterSpacing:2,marginBottom:16}}>AGGIORNAMENTO DATI</div>
       <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:12,padding:16,marginBottom:12}}>
         <div style={{fontSize:12,fontWeight:700,color:"#f8fafc",marginBottom:6}}>📊 ETF da Google Sheet</div>
-        <div style={{fontSize:10,color:"#6b7280",marginBottom:12}}>Aggiorna prezzi e variazioni per tutti gli scenari e gli ETF nazionali.</div>
+        <div style={{fontSize:10,color:"#6b7280",marginBottom:12}}>Fetch parallelo con 2 retry. Se un foglio fallisce vengono mantenuti i dati salvati.</div>
         <button onClick={fetchEtfData} disabled={refreshing} style={{background:refreshing?"#1f2937":"#F59E0B",color:"#000",border:"none",borderRadius:8,padding:"10px 20px",fontSize:12,fontWeight:800,cursor:"pointer",width:"100%"}}>
           {refreshing?"⏳ Caricamento...":"🔄 REFRESH ETF"}
         </button>
+        {/* Status checkmarks per foglio */}
+        {(fetchStatus.time||refreshing)&&<div style={{marginTop:10,display:"flex",flexDirection:"column",gap:6}}>
+          {[
+            {key:"sc",   label:"Scenari Macro"},
+            {key:"naz",  label:"ETF Nazionali"},
+            {key:"macro",label:"Indicatori Macro"},
+          ].map(function(row){
+            var st=fetchStatus[row.key];
+            var icon=refreshing?"⏳":st===true?"✅":st===false?"❌":"⏳";
+            var col=refreshing?"#6b7280":st===true?"#10B981":st===false?"#EF4444":"#6b7280";
+            return <div key={row.key} style={{display:"flex",alignItems:"center",gap:8,background:"#080812",borderRadius:6,padding:"6px 10px"}}>
+              <span style={{fontSize:14}}>{icon}</span>
+              <span style={{fontSize:10,color:col,fontWeight:700}}>{row.label}</span>
+              {!refreshing&&st===false&&<span style={{fontSize:9,color:"#4b5563",marginLeft:"auto"}}>dati localStorage mantenuti</span>}
+              {!refreshing&&st===true&&fetchStatus.time&&<span style={{fontSize:9,color:"#374151",marginLeft:"auto"}}>{fetchStatus.time}</span>}
+            </div>;
+          })}
+        </div>}
         <button onClick={function(){
           try{
             var scores={};
@@ -1954,12 +1984,11 @@ export default function App(){
             var now=new Date();
             setRefreshMsg("📌 Baseline W"+CURRENT_WEEK+" salvata "+now.getHours()+":"+String(now.getMinutes()).padStart(2,"0"));
           }catch(e){setRefreshMsg("Errore salvataggio");}
-        }} style={{background:"#1e3a5f",color:"#60a5fa",border:"1px solid #3b82f6",borderRadius:8,padding:"8px 20px",fontSize:11,fontWeight:700,cursor:"pointer",width:"100%",marginTop:6}}>
-          📌 SALVA SETTIMANA
+        }} style={{background:"#1e3a5f",color:"#60a5fa",border:"1px solid #3b82f6",borderRadius:8,padding:"8px 20px",fontSize:11,fontWeight:700,cursor:"pointer",width:"100%",marginTop:10}}>
+          📌 SALVA SETTIMANA (W{CURRENT_WEEK})
         </button>
+        {refreshMsg&&refreshMsg.startsWith("📌")&&<div style={{background:"#080812",border:"1px solid #3b82f6",borderRadius:6,padding:"8px 12px",fontSize:10,color:"#60a5fa",fontWeight:600,marginTop:6}}>{refreshMsg}</div>}
       </div>
-
-      {refreshMsg&&<div style={{background:"#080812",border:"1px solid #1f2937",borderRadius:8,padding:"12px 14px",fontSize:10,color:"#F59E0B",fontWeight:600,wordBreak:"break-word"}}>{refreshMsg}</div>}
     </div>}
 
   </div>;
