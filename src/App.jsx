@@ -703,6 +703,7 @@ export default function App(){
   const [macroText,setMacroText]=useState("");
   const [renderKey,setRenderKey]=useState(0);
   const [lastUpdate,setLastUpdate]=useState(LAST_UPDATE);
+  const [fetchStatus,setFetchStatus]=useState({sc:null,naz:null,macro:null,time:null});
 
   const sc=sel?SCENARIOS.find(s=>s.id===sel):null;
 
