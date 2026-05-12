@@ -797,7 +797,7 @@ export default function App(){
   async function fetchOneSheet(url, retries){
     for(var i=0;i<=retries;i++){
       try{
-        var r=await fetch(url+"&cachebust="+Date.now(),{cache:"no-store",headers:{"Cache-Control":"no-cache","Pragma":"no-cache"}}).then(function(x){return x.text();});
+        var r=await fetch(url+"&t="+Date.now(),{cache:"no-store"}).then(function(x){return x.text();});
         if(!r.trim().startsWith("<"))return r;
       }catch(e){}
       if(i<retries)await new Promise(function(res){setTimeout(res,1500);});
