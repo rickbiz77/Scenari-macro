@@ -794,13 +794,13 @@ export default function App(){
     }catch(e){}
   }
 
-  async function fetchOneSheet(url, retries){
-    for(var i=0;i<=retries;i++){
+  async function fetchOneSheet(url){
+    for(var i=0;i<10;i++){
       try{
         var r=await fetch(url+"&t="+Date.now(),{cache:"no-store"}).then(function(x){return x.text();});
         if(!r.trim().startsWith("<"))return r;
       }catch(e){}
-      if(i<retries)await new Promise(function(res){setTimeout(res,4000);});
+      await new Promise(function(res){setTimeout(res,2000);});
     }
     return null;
   }
@@ -812,11 +812,11 @@ export default function App(){
     setRefreshing(true);setRefreshMsg("Carico...");setFetchStatus({sc:null,naz:null,macro:null,time:null});
     var stSc=false,stNaz=false,stMacro=false;
     // Fetch sequenziale con pause tra un foglio e l'altro - evita throttling Google
-    var r1=await fetchOneSheet(URL_SC,2);
-    await new Promise(function(res){setTimeout(res,800);});
-    var r2=await fetchOneSheet(URL_NAZ,2);
-    await new Promise(function(res){setTimeout(res,800);});
-    var r3=await fetchOneSheet(URL_MACRO,2);
+    var r1=await fetchOneSheet(URL_SC);
+    await new Promise(function(res){setTimeout(res,500);});
+    var r2=await fetchOneSheet(URL_NAZ);
+    await new Promise(function(res){setTimeout(res,500);});
+    var r3=await fetchOneSheet(URL_MACRO);
     // ── SCENARI ──
     if(r1){
       var su=parseScenariCSV(r1);
