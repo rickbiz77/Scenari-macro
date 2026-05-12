@@ -800,7 +800,7 @@ export default function App(){
         var r=await fetch(url+"&t="+Date.now(),{cache:"no-store"}).then(function(x){return x.text();});
         if(!r.trim().startsWith("<"))return r;
       }catch(e){}
-      if(i<retries)await new Promise(function(res){setTimeout(res,1500);});
+      if(i<retries)await new Promise(function(res){setTimeout(res,4000);});
     }
     return null;
   }
@@ -811,8 +811,12 @@ export default function App(){
     autoSavePrevScores();
     setRefreshing(true);setRefreshMsg("Carico...");setFetchStatus({sc:null,naz:null,macro:null,time:null});
     var stSc=false,stNaz=false,stMacro=false;
-    // Fetch tutti e 3 in parallelo con 2 retry ciascuno
-    var [r1,r2,r3]=await Promise.all([fetchOneSheet(URL_SC,2),fetchOneSheet(URL_NAZ,2),fetchOneSheet(URL_MACRO,2)]);
+    // Fetch sequenziale con pause tra un foglio e l'altro - evita throttling Google
+    var r1=await fetchOneSheet(URL_SC,2);
+    await new Promise(function(res){setTimeout(res,800);});
+    var r2=await fetchOneSheet(URL_NAZ,2);
+    await new Promise(function(res){setTimeout(res,800);});
+    var r3=await fetchOneSheet(URL_MACRO,2);
     // ── SCENARI ──
     if(r1){
       var su=parseScenariCSV(r1);
