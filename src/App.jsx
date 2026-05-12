@@ -805,9 +805,9 @@ export default function App(){
     return null;
   }
   async function fetchEtfData(){
-    const URL_SC="https://docs.google.com/spreadsheets/d/e/2PACX-1vRtcPnQypnAxhDUn308spHSKmQM1pbLfImqfVz4XLR79h-HUUmNIHBElCbFSkUAvctO6IKGPn4c9d0k/pub?gid=0&single=true&output=csv";
-    const URL_MACRO="https://docs.google.com/spreadsheets/d/e/2PACX-1vRtcPnQypnAxhDUn308spHSKmQM1pbLfImqfVz4XLR79h-HUUmNIHBElCbFSkUAvctO6IKGPn4c9d0k/pub?gid=1320980954&single=true&output=csv";
-    const URL_NAZ="https://docs.google.com/spreadsheets/d/e/2PACX-1vRtcPnQypnAxhDUn308spHSKmQM1pbLfImqfVz4XLR79h-HUUmNIHBElCbFSkUAvctO6IKGPn4c9d0k/pub?gid=2023978700&single=true&output=csv";
+    const URL_SC="https://docs.google.com/spreadsheets/d/1lAR8AO3c_7UiCnhvz_FW-r97Wh21ZjzR5D6QSiGZtrk/export?format=csv&gid=0";
+    const URL_MACRO="https://docs.google.com/spreadsheets/d/1lAR8AO3c_7UiCnhvz_FW-r97Wh21ZjzR5D6QSiGZtrk/export?format=csv&gid=1320980954";
+    const URL_NAZ="https://docs.google.com/spreadsheets/d/1lAR8AO3c_7UiCnhvz_FW-r97Wh21ZjzR5D6QSiGZtrk/export?format=csv&gid=2023978700";
     autoSavePrevScores();
     setRefreshing(true);setRefreshMsg("Carico...");setFetchStatus({sc:null,naz:null,macro:null,time:null});
     var stSc=false,stNaz=false,stMacro=false;
