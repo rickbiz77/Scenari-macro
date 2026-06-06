@@ -13,7 +13,7 @@ function getISOWeek(s){
 const CURRENT_WEEK=(function(){const t=new Date();const d=String(t.getDate()).padStart(2,"0");const m=String(t.getMonth()+1).padStart(2,"0");const y=t.getFullYear();return getISOWeek(d+"/"+m+"/"+y);})();
 
 const SCENARIOS=[
-  {id:"goldilocks",name:"GOLDILOCKS",color:"#10B981",active:false,desc:"Crescita + inflazione moderata",
+  {id:"goldilocks",name:"GOLDILOCKS",color:"#10B981",desc:"Crescita + inflazione moderata",
    avg:{w:0.21,m:16.03,q:4.33,s:7.25,y:42.28,y2:49.53,y3:100.24,y5:95.85},
    etfs:[
     {t:"QQQ", n:"Invesco QQQ Trust",        p:659.57,w:0.68,  m:18.14, q:4.79,  s:4.85,  y:38.70,  y2:52.41,  y3:104.71, y5:95.14},
@@ -24,7 +24,7 @@ const SCENARIOS=[
     {t:"SPY", n:"SPDR S&P 500",             p:709.89,w:-0.19, m:12.33, q:2.28,  s:4.08,  y:28.07,  y2:39.18,  y3:70.85,  y5:70.12},
     {t:"URTH",n:"iShares MSCI World",       p:193.32,w:-0.82, m:10.51, q:1.32,  s:4.48,  y:25.39,  y2:36.88,  y3:61.54,  y5:56.40},
    ]},
-  {id:"recession",name:"RECESSIONE",color:"#6366F1",active:false,desc:"Crescita negativa",
+  {id:"recession",name:"RECESSIONE",color:"#6366F1",desc:"Crescita negativa",
    avg:{w:-1.02,m:-0.28,q:-3.40,s:2.79,y:8.22,y2:22.77,y3:25.81,y5:30.25},
    etfs:[
     {t:"TLT",n:"iShares 20+ Year Treasury", p:85.67, w:-1.23, m:-1.28, q:-2.23,  s:-5.12, y:-5.02,  y2:-3.72,  y3:-16.93, y5:-38.21},
@@ -34,7 +34,7 @@ const SCENARIOS=[
     {t:"GLD",n:"SPDR Gold Trust",           p:416.10,w:-4.40, m:0.37,  q:-16.09, s:13.03, y:35.95,  y2:92.48,  y3:126.18, y5:151.18},
     {t:"XLV",n:"Health Care Select SPDR",   p:142.51,w:-2.64, m:-0.91, q:-7.35,  s:-1.21, y:2.32,   y2:1.48,   y3:6.18,   y5:17.46},
    ]},
-  {id:"stagflation",name:"STAGFLAZIONE",color:"#F59E0B",active:true,desc:"Crescita lenta + inflazione alta",
+  {id:"stagflation",name:"STAGFLAZIONE",color:"#F59E0B",desc:"Crescita lenta + inflazione alta",
    avg:{w:-1.28,m:3.84,q:-0.26,s:18.96,y:52.24,y2:49.81,y3:60.79,y5:74.06},
    etfs:[
     {t:"GLD", n:"SPDR Gold Trust",          p:416.10,w:-4.40, m:0.37,  q:-16.09, s:13.03, y:35.95,  y2:92.48,  y3:126.18, y5:151.18},
@@ -49,7 +49,7 @@ const SCENARIOS=[
     {t:"URA", n:"Global X Uranium ETF",     p:52.99, w:-8.21, m:17.00, q:-10.69, s:-3.86, y:110.86, y2:74.42,  y3:168.71, y5:170.22},
     {t:"REMX",n:"VanEck Rare Earth ETF",    p:100.25,w:-3.42, m:17.28, q:7.18,   s:42.20, y:161.48, y2:90.70,  y3:28.39,  y5:25.61},
    ]},
-  {id:"reflation",name:"REFLAZIONE",color:"#0EA5E9",active:false,desc:"Ripresa + inflazione in aumento",
+  {id:"reflation",name:"REFLAZIONE",color:"#0EA5E9",desc:"Ripresa + inflazione in aumento",
    avg:{w:-2.08,m:8.20,q:-0.63,s:10.74,y:42.62,y2:39.77,y3:66.42,y5:63.96},
    etfs:[
     {t:"XLI", n:"Industrial Select SPDR",   p:169.47, w:-0.92, m:8.21,  q:2.18,   s:9.29,  y:30.08,  y2:37.24,  y3:68.56,  y5:66.26},
@@ -64,7 +64,7 @@ const SCENARIOS=[
     {t:"COPX",n:"Global X Copper Miners",   p:77.78,  w:-8.39, m:9.94,  q:-17.46, s:25.94, y:99.54,  y2:61.97,  y3:96.91,  y5:97.11},
     {t:"URA", n:"Global X Uranium ETF",     p:52.99,  w:-8.21, m:17.00, q:-10.69, s:-3.86, y:110.86, y2:74.42,  y3:168.71, y5:170.22},
    ]},
-  {id:"disinflation",name:"DISINFLAZIONE",color:"#8B5CF6",active:false,desc:"Soft landing - inflazione in calo",
+  {id:"disinflation",name:"DISINFLAZIONE",color:"#8B5CF6",desc:"Soft landing - inflazione in calo",
    avg:{w:-0.92,m:5.41,q:-1.10,s:5.29,y:19.82,y2:33.83,y3:52.27,y5:46.34},
    etfs:[
     {t:"TLT", n:"iShares 20+ Year Treasury",p:85.67, w:-1.23, m:-1.28, q:-2.23,  s:-5.12, y:-5.02,  y2:-3.72,  y3:-16.93, y5:-38.21},
@@ -74,7 +74,7 @@ const SCENARIOS=[
     {t:"GLD", n:"SPDR Gold Trust",          p:416.10,w:-4.40, m:0.37,  q:-16.09, s:13.03, y:35.95,  y2:92.48,  y3:126.18, y5:151.18},
     {t:"SCHD",n:"Schwab US Dividend Equity",p:31.32, w:1.00,  m:2.76,  q:6.64,   s:17.08, y:20.97,  y2:20.60,  y3:29.37,  y5:26.09},
    ]},
-  {id:"dollarweakness",name:"DOLLAR WEAKNESS",color:"#EC4899",active:false,desc:"Dollaro debole + riequilibrio globale",
+  {id:"dollarweakness",name:"DOLLAR WEAKNESS",color:"#EC4899",desc:"Dollaro debole + riequilibrio globale",
    avg:{w:-0.71,m:6.03,q:1.30,s:14.26,y:31.43,y2:44.71,y3:55.15,y5:55.62},
    etfs:[
     {t:"EEM", n:"iShares MSCI Emerging",    p:62.63, w:-1.18, m:14.39, q:3.62,   s:13.25, y:43.48,  y2:50.66,  y3:60.59,  y5:16.02},
@@ -83,7 +83,7 @@ const SCENARIOS=[
     {t:"IXUS",n:"iShares Core MSCI Total Intl",p:91.06,w:-1.89,m:8.74, q:0.19,   s:8.47,  y:26.68,  y2:35.53,  y3:44.47,  y5:26.00},
     {t:"DBC", n:"Invesco DB Commodity",     p:30.94, w:4.85,  m:5.74,  q:22.29,  s:35.23, y:47.61,  y2:30.88,  y3:32.45,  y5:72.75},
    ]},
-  {id:"deflation",name:"DEFLAZIONE",color:"#64748B",active:false,desc:"Prezzi in calo + contrazione",
+  {id:"deflation",name:"DEFLAZIONE",color:"#64748B",desc:"Prezzi in calo + contrazione",
    avg:{w:0.20,m:-0.22,q:0.62,s:0.96,y:2.19,y2:8.50,y3:4.54,y5:2.60},
    etfs:[
     {t:"TLT",n:"iShares 20+ Year Treasury", p:85.67, w:-1.23, m:-1.28, q:-2.23,  s:-5.12, y:-5.02,  y2:-3.72,  y3:-16.93, y5:-38.21},
@@ -92,7 +92,7 @@ const SCENARIOS=[
     {t:"XLP",n:"Cons Staples Select SPDR",  p:82.65, w:0.66,  m:0.94,  q:0.63,   s:8.35,  y:1.74,   y2:8.99,   y3:6.65,   y5:18.78},
     {t:"XLU",n:"Utilities Select SPDR",     p:45.63, w:1.69,  m:-0.63, q:5.31,   s:2.42,  y:15.08,  y2:36.01,  y3:32.07,  y5:36.78},
    ]},
-  {id:"dollarweaknessbtc",name:"DOLLAR WEAKNESS +BTC",color:"#F97316",active:false,desc:"Dollaro debole + Bitcoin",
+  {id:"dollarweaknessbtc",name:"DOLLAR WEAKNESS +BTC",color:"#F97316",desc:"Dollaro debole + Bitcoin",
    avg:{w:-2.59,m:7.55,q:-5.21,s:0.92,y:17.66,y2:42.35,y3:null,y5:null},
    etfs:[
     {t:"EEM", n:"iShares MSCI Emerging",    p:62.63, w:-1.18, m:14.39, q:3.62,   s:13.25, y:43.48,  y2:50.66,  y3:60.59,  y5:16.02},
@@ -101,7 +101,7 @@ const SCENARIOS=[
     {t:"IXUS",n:"iShares Core MSCI Total Intl",p:91.06,w:-1.89,m:8.74, q:0.19,   s:8.47,  y:26.68,  y2:35.53,  y3:44.47,  y5:26.00},
     {t:"IBIT",n:"iShares Bitcoin Trust ETF",p:42.71, w:-4.56, m:13.35, q:-10.27, s:-31.44,y:-21.23, y2:19.07,  y3:null,   y5:null},
    ]},
-  {id:"debasementbtc",name:"DEBASEMENT +BTC",color:"#F97316",active:false,desc:"Debasement aggressivo con Bitcoin",
+  {id:"debasementbtc",name:"DEBASEMENT +BTC",color:"#F97316",desc:"Debasement aggressivo con Bitcoin",
    avg:{w:-6.22,m:7.96,q:-13.72,s:19.74,y:81.09,y2:97.67,y3:null,y5:null},
    etfs:[
     {t:"GLD", n:"SPDR Gold Trust",          p:416.10,w:-4.40, m:0.37,  q:-16.09, s:13.03, y:35.95,  y2:92.48,  y3:126.18, y5:151.18},
@@ -114,7 +114,7 @@ const SCENARIOS=[
     {t:"SIL", n:"Global X Silver Miners",   p:86.25, w:-11.20,m:3.23,  q:-22.06, s:29.58, y:114.61, y2:169.28, y3:192.37, y5:106.93},
     {t:"REMX",n:"VanEck Rare Earth ETF",    p:100.25,w:-3.42, m:17.28, q:7.18,   s:42.20, y:161.48, y2:90.70,  y3:28.39,  y5:25.61},
    ]},
-  {id:"debasement",name:"DEBASEMENT",color:"#EF4444",active:true,desc:"Svalutazione monetaria strutturale",
+  {id:"debasement",name:"DEBASEMENT",color:"#EF4444",desc:"Svalutazione monetaria strutturale",
    avg:{w:-5.70,m:6.50,q:-12.49,s:23.43,y:83.88,y2:96.56,y3:110.48,y5:null},
    etfs:[
     {t:"GLD", n:"SPDR Gold Trust",          p:416.10,w:-4.40, m:0.37,  q:-16.09, s:13.03, y:35.95,  y2:92.48,  y3:126.18, y5:151.18},
@@ -476,6 +476,7 @@ let RISK_MOM_DATA=[
   {t:"HYG", n:"iShares iBoxx High Yield", p:79.00, g:null, w:null},
   {t:"CPER",n:"US Copper Index Fund",     p:30.00, g:null, w:null},
   {t:"USO", n:"US Oil Fund (WTI)",        p:78.00, g:null, w:null},
+  {t:"UUP", n:"Invesco DB US Dollar Bull", p:28.00, g:null, w:null},
 ];
 function buildPriceMap(){
   const m={};
@@ -590,27 +591,67 @@ function calcAllocation(score,active){
   let rCash=100-rRisk-rDef;
   return {pRisk:rRisk,pDef:rDef,pCash:rCash};
 }
-const ORIENTATION={
-  SPY:"riskon",QQQ:"riskon",XLK:"riskon",XLY:"riskon",SMH:"riskon",IWM:"riskon",VTI:"riskon",URTH:"riskon",
-  EEM:"riskon",IBIT:"riskon",SX5E:"riskon",VTV:"riskon",XLF:"riskon",XLI:"riskon",IXUS:"riskon",ITA:"riskon",
-  SCHD:"riskon",HYG:"riskon",
-  XLU:"difensivo",XLP:"difensivo",XLV:"difensivo",TLT:"difensivo",IEF:"difensivo",SHY:"difensivo",
-  BIL:"difensivo",LQD:"difensivo",VDST:"difensivo",FXF:"difensivo",
-  GLD:"reale",SLV:"reale",DBC:"reale",XLE:"reale",DBA:"reale",MOO:"reale",XLB:"reale",COPX:"reale",
-  XME:"reale",SIL:"reale",GDX:"reale",REMX:"reale",URA:"reale",TIP:"reale",
-};
-function gateInfo(ticker,riskMom,leadActiveMax){
-  const o=ORIENTATION[ticker]||"riskon";
-  let v;
-  if(o==="difensivo")v=100-riskMom;
-  else if(o==="reale")v=leadActiveMax;
-  else v=riskMom;
-  const col=v>=60?"#10B981":v<=40?"#EF4444":"#F59E0B";
-  const label=o==="riskon"?"risk-on":o==="difensivo"?"difensivo":"reale";
-  return {col,label,v,o};
+// ── GATE: 3 gruppi + nazionali, tutto su VARIAZIONI di prezzo (blend 70/30 come Risk Mom) ──
+// driver = variazione % (blend daily/weekly) del ticker-proxy
+function driverVar(ticker){
+  const map=buildPriceMap();
+  return riskMomBlend(map[ticker], !isUSOpen());
 }
-function GatePill({ticker,riskMom,leadActiveMax}){
-  const g=gateInfo(ticker,riskMom,leadActiveMax);
+function driverContrib(ticker, weight, scale){
+  const v=driverVar(ticker);
+  if(v==null||isNaN(v)||!weight)return 0;
+  let n=v/(scale||2.5); if(n>1)n=1; if(n<-1)n=-1;
+  return weight*n;
+}
+// ticker -> scenari di appartenenza (base del gruppo 3 = score finale più alto fra questi)
+const TICKER_SCENARIOS=(function(){var m={};SCENARIOS.forEach(function(s){s.etfs.forEach(function(e){(m[e.t]=m[e.t]||[]).push(s.id);});});return m;})();
+// gruppo 2 (risk-off / difensivi), ITA incluso
+const GATE_RISKOFF=new Set(["XLU","XLP","XLV","TLT","IEF","SHY","BIL","LQD","VDST","FXF","ITA"]);
+// gruppo 3 (scenario-dipendenti): pesi driver per ticker {dol=dollaro, oil=petrolio, cina, tsy=treasury}
+const GROUP3_W={
+  GLD:{dol:20,tsy:15}, SLV:{dol:20,tsy:15}, GDX:{dol:20,tsy:15}, SIL:{dol:20,tsy:15},
+  COPX:{dol:12,cina:15}, XME:{dol:12,cina:5}, REMX:{dol:12,cina:5}, XLB:{dol:12,cina:5},
+  XLE:{dol:8,oil:20}, DBC:{dol:8,oil:20},
+  MOO:{dol:8,oil:10}, DBA:{dol:8,oil:10},
+  URA:{dol:5},
+  TIP:{dol:3,tsy:20},
+};
+// driver ETF nazionali — petrolio col segno (export+ / import−); gli altri magnitudini positive
+const OIL_NAZ={KSA:20,EWC:12,EWZ:10,EWA:8,EWW:5,ILF:5,EEM:-3,EZA:-5,EWL:-4,EWN:-6,EWQ:-6,EWS:-6,GREK:-8,EPOL:-10,EWP:-10,EWT:-10,MCHI:-10,VEA:-5,DVYA:-5,EWI:-12,EWY:-12,DXJ:-12,EWG:-15,INDY:-18,TUR:-18};
+const DOLLAR_NAZ={EWZ:15,TUR:15,EZA:15,EWW:12,EEM:10,ILF:10,INDY:10,MCHI:8,EWY:6,EWT:6,THD:6};
+const CHINA_NAZ={MCHI:20,EWA:15,EWZ:12,EWG:8,EEM:8,EWY:5,EWT:5,THD:5};
+const SEMI_NAZ={EWT:18,EWY:15,MCHI:5};
+const METALS_NAZ={EWA:12,EZA:12,EWZ:10,ILF:10,EWC:6,EEM:5};
+
+function gateValue(ticker, riskMom, scenarioScores, national){
+  let v, label;
+  if(national){
+    label="nazionale"; v=riskMom;
+    v+=driverContrib("USO",  OIL_NAZ[ticker]||0);
+    v+=driverContrib("UUP", -(DOLLAR_NAZ[ticker]||0));
+    v+=driverContrib("MCHI", CHINA_NAZ[ticker]||0);
+    v+=driverContrib("SMH",  SEMI_NAZ[ticker]||0);
+    v+=driverContrib("XME",  METALS_NAZ[ticker]||0);
+  } else if(GATE_RISKOFF.has(ticker)){
+    label="risk-off"; v=100-riskMom;
+  } else if(GROUP3_W[ticker]!==undefined){
+    label="scenario";
+    var scs=(TICKER_SCENARIOS[ticker]||[]).map(function(id){return scenarioScores?scenarioScores[id]:null;}).filter(function(x){return x!=null;});
+    v=scs.length?Math.max.apply(null,scs):50;
+    var w=GROUP3_W[ticker];
+    if(w.dol) v+=driverContrib("UUP", -w.dol);   // dollaro su = malus (commodity contrarie al $)
+    if(w.oil) v+=driverContrib("USO", w.oil);    // petrolio su = bonus
+    if(w.cina)v+=driverContrib("MCHI",w.cina);   // cina su = bonus
+    if(w.tsy) v+=driverContrib("TLT", w.tsy);    // TLT su (tassi giù) = bonus; TLT giù (tassi su) = malus
+  } else {
+    label="risk-on"; v=riskMom;
+  }
+  v=Math.max(0,Math.min(100,v));
+  var col=v>=60?"#10B981":v<=40?"#EF4444":"#F59E0B";
+  return {v:v,col:col,label:label};
+}
+function GatePill({ticker,riskMom,scenarioScores,national}){
+  const g=gateValue(ticker,riskMom,scenarioScores,national);
   const dot=g.col==="#10B981"?"🟢":g.col==="#EF4444"?"🔴":"🟡";
   return <div title={"Gate "+g.label} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
     <div style={{fontSize:6,color:"#475569",letterSpacing:1}}>GATE</div>
@@ -962,7 +1003,9 @@ export default function App(){
   const riskMomScore=riskMomDetail.score;
   const riskLeadScore=calcRiskLead();
   const riskOnOff=riskMomScore*0.6+riskLeadScore*0.4;
-  const activeLeadMax=Math.max(0,...SCENARIOS.filter(s=>s.active).map(s=>leadMap[s.id]??0));
+  // Scenario "attivo" deciso dai DATI: i 2 con punteggio finale più alto (niente flag a mano)
+  const activeIds=[...SCENARIOS].sort((a,b)=>(finalMap[b.id]??-1)-(finalMap[a.id]??-1)).slice(0,2).map(s=>s.id);
+  SCENARIOS.forEach(s=>{s.active=activeIds.includes(s.id);});
 
   useEffect(()=>{
     const curScores=Object.fromEntries(allMomScores.map(s=>[s.id,s.composite]));
@@ -994,7 +1037,7 @@ export default function App(){
     if(d===null) return <span style={{...base,background:"#1e293b",border:"1px solid #374151",color:"#374151"}}>—</span>;
     return <span style={{...base,background:c+"22",border:"1px solid "+c,color:c}}>{(d>=0?"+":"")+d.toFixed(1)}{a}</span>;
   }
-  function MiniGate({ticker}){return <GatePill ticker={ticker} riskMom={riskMomScore} leadActiveMax={activeLeadMax}/>;}
+  function MiniGate({ticker,national}){return <GatePill ticker={ticker} riskMom={riskMomScore} scenarioScores={finalMap} national={national}/>;}
 
   const sortedByFinal=[...SCENARIOS].sort((a,b)=>(finalMap[b.id]??-999)-(finalMap[a.id]??-999));
 
@@ -1394,7 +1437,7 @@ export default function App(){
                   <div style={{fontSize:7,color:"#475569",letterSpacing:1}}>SCORE</div>
                   <ScorePill v={e.score} size="lg"/>
                 </div>
-                <MiniGate ticker={e.t}/>
+                <MiniGate ticker={e.t} national/>
               </div>
             </div>
             <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
