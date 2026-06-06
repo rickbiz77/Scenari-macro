@@ -12,20 +12,6 @@ function getISOWeek(s){
 }
 const CURRENT_WEEK=(function(){const t=new Date();const d=String(t.getDate()).padStart(2,"0");const m=String(t.getMonth()+1).padStart(2,"0");const y=t.getFullYear();return getISOWeek(d+"/"+m+"/"+y);})();
 
-const MATRIX=[
-  {name:"GOLDILOCKS",     active:false,color:"#10B981",v:[-0.05,4.40,-3.24,-3.73,-1.13,44.30,33.85,84.54,77.53]},
-  {name:"RECESSIONE",     active:false,color:"#6366F1",v:[-0.05,0.87,-3.17, 3.61, 4.84,15.06,30.13,30.24,37.27]},
-  {name:"STAGFLAZIONE",   active:true, color:"#F59E0B",v:[ 0.35,0.15, 1.21,13.82,16.64,33.70,39.07,44.16,82.90]},
-  {name:"REFLAZIONE",     active:false,color:"#0EA5E9",v:[ 0.32,3.09,-0.30, 3.65, 6.61,33.81,27.47,46.62,39.79]},
-  {name:"DISINFLAZIONE",  active:false,color:"#8B5CF6",v:[-0.12,2.60,-3.80,-1.35, 1.58,23.20,31.94,50.53,48.43]},
-  {name:"DOLLAR WEAKNESS",active:false,color:"#EC4899",v:[-0.38,2.25,-0.55, 6.49,10.78,35.02,41.18,49.44,56.19]},
-  {name:"DEFLAZIONE",     active:false,color:"#64748B",v:[ 0.34,0.11,-1.59, 2.60, 1.25, 4.35, 9.52, 4.50, 4.21]},
-  {name:"DW +BTC",        active:false,color:"#F97316",v:[-1.18,2.36,-3.87,-5.02,-4.47,22.93,35.79, null, null]},
-  {name:"DEBASEMENT +BTC",active:false,color:"#F97316",v:[-1.12,4.68,-4.83,-4.88, 2.48,67.26,58.25, null, null]},
-  {name:"DEBASEMENT",     active:true, color:"#EF4444",v:[-0.75,4.55,-3.57, 1.09,12.20,72.17,60.67, null, null]},
-];
-const MCOLS=["1G","1S","1M","3M","6M","1A","2A","3A","5A"];
-
 const SCENARIOS=[
   {id:"goldilocks",name:"GOLDILOCKS",color:"#10B981",active:false,desc:"Crescita + inflazione moderata",
    avg:{w:0.21,m:16.03,q:4.33,s:7.25,y:42.28,y2:49.53,y3:100.24,y5:95.85},
@@ -172,8 +158,8 @@ const ETF_NAZIONALI=[
 ];
 
 
-// ── MOMENTUM ──────────────────────────────────────────────────────
-const WEIGHTS={w:0.25,m:0.40,q:0.20,s:0.10,y:0.05};
+// ── MOMENTUM (pesi aggressivi verso breve termine) ────────────────
+const WEIGHTS={w:0.45,m:0.35,q:0.12,s:0.05,y:0.03};
 function calcMomScore(etf){let s=0,tw=0;Object.entries(WEIGHTS).forEach(([k,w])=>{if(etf[k]!=null){s+=etf[k]*w;tw+=w;}});return tw>0?s:null;}
 function calcScenarioMom(sc){const ss=sc.etfs.map(e=>calcMomScore(e)).filter(v=>v!=null);return ss.length?ss.reduce((a,b)=>a+b,0)/ss.length:null;}
 function normArr(score,all){const vals=all.map(s=>s.raw).filter(v=>v!=null);const mn=Math.min(...vals),mx=Math.max(...vals);if(mx===mn)return 50;return((score-mn)/(mx-mn))*100;}
@@ -190,12 +176,8 @@ function calcAllEtfScores(){
   const vals=raw.map(s=>s.raw).filter(v=>v!=null);const mn=Math.min(...vals),mx=Math.max(...vals);
   return raw.map(s=>({...s,rank:rk[s.t],composite:s.raw!=null?(rk[s.t]*0.75+((s.raw-mn)/(mx-mn||1))*100*0.25):null}));
 }
-// Final Score con momentum meta-segnale
-// Se momentum score è in trend rialzista per 3+ settimane → aumenta peso leading
 function calcFinalScore(momentumComposite, leadingScore, scenarioId, history){
   if(leadingScore===null||leadingScore===undefined) return momentumComposite;
-  // Base: 70% Leading + 30% Momentum
-  // Modulazione: se momentum in salita 3 sett → 60/40, se in calo → 80/20
   let wLead = 0.70;
   if(history && history.length >= 3){
     const sorted=[...history].sort((a,b)=>a.week-b.week);
@@ -203,15 +185,13 @@ function calcFinalScore(momentumComposite, leadingScore, scenarioId, history){
     if(last3.length===3){
       const rising=last3[2]>last3[1]&&last3[1]>last3[0];
       const falling=last3[2]<last3[1]&&last3[1]<last3[0];
-      if(rising)  wLead=0.60; // momentum confermato → più peso ai dati storici
-      if(falling) wLead=0.80; // momentum contraddict → più peso ai leading
+      if(rising)  wLead=0.60;
+      if(falling) wLead=0.80;
     }
   }
   return leadingScore * wLead + momentumComposite * (1-wLead);
 }
 function calcAvgMom(e){
-  // Media ponderata performance settimanale (valori già in %)
-  // 1S×40% + (1M÷4)×30% + (3M÷13)×20% + (6M÷26)×10%
   const entries=[
     {v:e.w,                              w:0.40},
     {v:e.m!=null?e.m/4:null,             w:0.30},
@@ -231,24 +211,13 @@ function AvgMomPill({v,size="sm"}){
   const fs=size==="lg"?14:10;
   return <span style={{background:c+"22",border:"1px solid "+c,borderRadius:5,padding:size==="lg"?"4px 6px":"2px 5px",fontFamily:"monospace",fontSize:fs,fontWeight:800,color:c,minWidth:size==="lg"?52:0,display:"inline-block",textAlign:"center"}}>{v>=0?"+":""}{v.toFixed(1)}%</span>;
 }
-
 function scoreColor(v){if(v===null||v===undefined)return"#6b7280";if(v>=70)return"#10B981";if(v>=40)return"#F59E0B";return"#EF4444";}
 function ScorePill({v,size="sm"}){
   if(v===null||v===undefined)return <span style={{color:"#374151",fontSize:10}}>—</span>;
   const c=scoreColor(v),fs=size==="lg"?14:10;
   return <span style={{background:c+"22",border:"1px solid "+c,borderRadius:5,padding:size==="lg"?"4px 6px":"2px 5px",fontFamily:"monospace",fontSize:fs,fontWeight:800,color:c,minWidth:size==="lg"?52:0,display:"inline-block",textAlign:"center"}}>{Math.round(v)}</span>;
 }
-
 const PERS=[{k:"w",l:"1S"},{k:"m",l:"1M"},{k:"q",l:"3M"},{k:"s",l:"6M"},{k:"y",l:"1A"},{k:"y2",l:"2A"},{k:"y3",l:"3A"},{k:"y5",l:"5A"}];
-const CHART_PERIODS=[{title:"1 SETTIMANA",idx:1},{title:"1 MESE",idx:2},{title:"3 MESI",idx:3},{title:"6 MESI",idx:4},{title:"1 ANNO",idx:5},{title:"3 ANNI",idx:7}];
-const ETF_PERIODS=[{k:"w",l:"1S"},{k:"m",l:"1M"},{k:"q",l:"3M"},{k:"s",l:"6M"},{k:"y",l:"1A"}];
-
-function heatColor(v){
-  if(v===null||v===undefined)return"transparent";
-  if(v>=50)return"rgba(16,185,129,0.85)";if(v>=20)return"rgba(16,185,129,0.55)";if(v>=5)return"rgba(16,185,129,0.30)";
-  if(v>=0)return"rgba(16,185,129,0.15)";if(v>=-5)return"rgba(239,68,68,0.15)";if(v>=-15)return"rgba(239,68,68,0.35)";
-  return"rgba(239,68,68,0.60)";
-}
 function Pct({v}){
   if(v===null||v===undefined)return <span style={{color:"#374151"}}>—</span>;
   return <span style={{color:v>=0?"#10B981":"#EF4444",fontFamily:"monospace",fontSize:11,fontWeight:700}}>{v>=0?"+":""}{v.toFixed(2)}%</span>;
@@ -260,9 +229,7 @@ function TT({active,payload,label}){
     <div style={{fontSize:13,fontWeight:700,color:v>=0?"#10B981":"#EF4444",fontFamily:"monospace"}}>{v>=0?"+":""}{v?.toFixed?v.toFixed(2):v}</div>
   </div>;
 }
-function sortedScenarios(){return[...SCENARIOS].sort((a,b)=>{const am=a.avg.m??-999,bm=b.avg.m??-999;if(Math.abs(bm-am)>0.001)return bm-am;return(b.avg.q??-999)-(a.avg.q??-999);});}
 
-// ── INDICATORI MACRO — aggiornati da screenshot claude checklist ──
 const INDICATORS = {
   yieldCurve:0.51, vix:16.98,  move:70.41,  ism:52.7,   ismNewOrders:54.1, ismEmployment:46.4, ismPricesPaid:84.6,
   cpi:2.6,         ppi:4.0,    pce:3.2,     tedSpread:0.09, crb:393.40, bdi:2978,  ifo:83.3,
@@ -280,9 +247,6 @@ const INDICATORS = {
   de10y:3.042,     eurusd:1.17192, sx5e:5881.51, eursyy:1.7,
   deCurve:0.397,   euRealYield:0.042, deppimm:2.5, deppiyy:-0.2,
 };
-
-// Leading score per scenario basato sugli indicatori
-// ── VALORI PRECEDENTI — da checklist 15/04/2026 ────────────────────
 const PREV_INDICATORS = {
   yieldCurve:0.52, vix:18.45,  move:68.68,  ism:52.7,   ismNewOrders:53.5, ismEmployment:48.7, ismPricesPaid:78.3,
   cpi:2.6,         ppi:4.0,    pce:3.0,     tedSpread:0.09, crb:394.49, bdi:2677,  ifo:83.3,
@@ -299,7 +263,9 @@ const PREV_INDICATORS = {
   dtb3:3.61,       sofr:3.66,   euur:6.2,    eujvr:2.2,
   de10y:3.042,     eurusd:1.17192, sx5e:5881.51, eursyy:1.7,
   deCurve:0.397,   euRealYield:0.042, deppimm:2.5, deppiyy:-0.2,
-};function calcLeadingScore(scenarioId){
+};
+
+function calcLeadingScore(scenarioId){
   const cfg=SCENARIO_CFG[scenarioId];if(!cfg)return null;
   let tw=0,ts=0;
   cfg.forEach(({id,w,dir,good,bad})=>{
@@ -308,29 +274,23 @@ const PREV_INDICATORS = {
   });
   return tw>0?(ts/tw):null;
 }
-
-// ── APP ───────────────────────────────────────────────────────────
 function variationScore(id, dir, good, bad){
   const curr=INDICATORS[id], prev=PREV_INDICATORS[id];
   if(curr==null||prev==null||isNaN(curr)||isNaN(prev)) return 50;
   const delta=curr-prev;
   const range=Math.abs(good-bad);
   if(range===0) return 50;
-  // Normalizza il delta rispetto al range dell'indicatore
   const normDelta=(delta/range)*100;
   if(dir==="high") return Math.min(100,Math.max(0,50+normDelta*2));
   if(dir==="low")  return Math.min(100,Math.max(0,50-normDelta*2));
   return 50;
 }
-
 function signalScore(v, dir, good, bad){
   if(v===null||v===undefined||isNaN(v))return 50;
   if(dir==="high"){if(v>=good)return 100;if(v<=bad)return 0;return((v-bad)/(good-bad))*100;}
   if(dir==="low"){if(v<=good)return 100;if(v>=bad)return 0;return((bad-v)/(bad-good))*100;}
   const dist=Math.abs(v-good),maxD=Math.abs(bad-good);return Math.max(0,100-(dist/maxD)*100);
 }
-
-// Score composito: 60% valore nominale + 40% variazione
 function compositeSignal(id, dir, good, bad){
   const nom=signalScore(INDICATORS[id],dir,good,bad);
   const var_=variationScore(id,dir,good,bad);
@@ -339,37 +299,37 @@ function compositeSignal(id, dir, good, bad){
 
 const SCENARIO_CFG = {
   stagflation: [
-    {id:"pce",          w:.14,dir:"high",good:4.0,  bad:2.0},   // PCE YoY - polarizzante
-    {id:"ismPricesPaid",w:.12,dir:"high",good:78,   bad:40},    // polarizzante
-    {id:"ppi",          w:.10,dir:"high",good:5.0,  bad:1.5},   // polarizzante
-    {id:"breakeven",    w:.10,dir:"high",good:2.8,  bad:2.0},   // polarizzante
+    {id:"pce",          w:.14,dir:"high",good:4.0,  bad:2.0},
+    {id:"ismPricesPaid",w:.12,dir:"high",good:78,   bad:40},
+    {id:"ppi",          w:.10,dir:"high",good:5.0,  bad:1.5},
+    {id:"breakeven",    w:.10,dir:"high",good:2.8,  bad:2.0},
     {id:"ppiCoreMom",   w:.07,dir:"high",good:0.4,  bad:0.0},
     {id:"cpiCoreMom",   w:.07,dir:"high",good:0.35, bad:0.0},
     {id:"cpiMom",       w:.07,dir:"high",good:0.5,  bad:0.0},
     {id:"cpi",          w:.08,dir:"high",good:5.0,  bad:2.0},
-    {id:"realYield",    w:.08,dir:"high",good:2.5,  bad:0.0},   // polarizzante
+    {id:"realYield",    w:.08,dir:"high",good:2.5,  bad:0.0},
     {id:"ism",          w:.05,dir:"low", good:45,   bad:55},
     {id:"ifo",          w:.04,dir:"low", good:85,   bad:102},
     {id:"us10y",        w:.04,dir:"high",good:5.0,  bad:2.5},
-    {id:"oil",          w:.03,dir:"high",good:100,  bad:55},    // ridotto - volatile
-    {id:"crb",          w:.06,dir:"high",good:420,  bad:280},   // ridotto - volatile
-    {id:"ppiMom",       w:.06,dir:"high",good:0.5,  bad:0.0},   // ridotto - volatile
+    {id:"oil",          w:.03,dir:"high",good:100,  bad:55},
+    {id:"crb",          w:.06,dir:"high",good:420,  bad:280},
+    {id:"ppiMom",       w:.06,dir:"high",good:0.5,  bad:0.0},
   ],
   debasement: [
-    {id:"realYield",    w:.15,dir:"low", good:-0.5, bad:1.5},   // polarizzante - il più importante
-    {id:"m2Dxy",        w:.13,dir:"high",good:230,  bad:210},   // polarizzante
-    {id:"breakeven",    w:.12,dir:"high",good:2.8,  bad:2.0},   // polarizzante
-    {id:"dxy",          w:.10,dir:"low", good:97,   bad:108},   // polarizzante
+    {id:"realYield",    w:.15,dir:"low", good:-0.5, bad:1.5},
+    {id:"m2Dxy",        w:.13,dir:"high",good:230,  bad:210},
+    {id:"breakeven",    w:.12,dir:"high",good:2.8,  bad:2.0},
+    {id:"dxy",          w:.10,dir:"low", good:97,   bad:108},
     {id:"pce",          w:.08,dir:"high",good:4.0,  bad:2.0},
     {id:"pceMom",       w:.07,dir:"high",good:0.35, bad:0.0},
     {id:"emSpread",     w:.06,dir:"low", good:3.0,  bad:7.0},
     {id:"ppi",          w:.06,dir:"high",good:5.0,  bad:1.5},
-    {id:"euribor",      w:.06,dir:"low", good:1.5,  bad:4.0},   // BCE dovish = debasement
+    {id:"euribor",      w:.06,dir:"low", good:1.5,  bad:4.0},
     {id:"us10y",        w:.05,dir:"low", good:2.0,  bad:5.0},
     {id:"dtb3",         w:.04,dir:"low", good:2.0,  bad:5.0},
-    {id:"ppiMom",       w:.06,dir:"high",good:0.4,  bad:0.0},   // ridotto - volatile
-    {id:"crb",          w:.06,dir:"high",good:420,  bad:280},   // ridotto - volatile
-    {id:"vvixVix",      w:.02,dir:"low", good:4.0,  bad:7.0},   // ridotto - volatile
+    {id:"ppiMom",       w:.06,dir:"high",good:0.4,  bad:0.0},
+    {id:"crb",          w:.06,dir:"high",good:420,  bad:280},
+    {id:"vvixVix",      w:.02,dir:"low", good:4.0,  bad:7.0},
   ],
   debasementbtc: [
     {id:"realYield",    w:.15,dir:"low", good:-0.5, bad:1.5},
@@ -385,11 +345,11 @@ const SCENARIO_CFG = {
     {id:"pceMom",       w:.03,dir:"high",good:0.35, bad:0.0},
   ],
   goldilocks: [
-    {id:"lei",          w:.12,dir:"high",good:101.5,bad:99.5},   // polarizzante
-    {id:"hySpread",     w:.10,dir:"low", good:2.5,  bad:6.0},   // polarizzante
-    {id:"yieldCurve",   w:.10,dir:"high",good:1.5,  bad:0.0},   // polarizzante
-    {id:"cfnai",        w:.08,dir:"high",good:0.2,  bad:-0.7},  // polarizzante
-    {id:"igSpread",     w:.08,dir:"low", good:0.6,  bad:2.0},   // polarizzante
+    {id:"lei",          w:.12,dir:"high",good:101.5,bad:99.5},
+    {id:"hySpread",     w:.10,dir:"low", good:2.5,  bad:6.0},
+    {id:"yieldCurve",   w:.10,dir:"high",good:1.5,  bad:0.0},
+    {id:"cfnai",        w:.08,dir:"high",good:0.2,  bad:-0.7},
+    {id:"igSpread",     w:.08,dir:"low", good:0.6,  bad:2.0},
     {id:"spx",          w:.07,dir:"high",good:7500, bad:5000},
     {id:"ismNewOrders", w:.07,dir:"high",good:56,   bad:48},
     {id:"pcc",          w:.06,dir:"low", good:0.7,  bad:1.2},
@@ -401,13 +361,13 @@ const SCENARIO_CFG = {
     {id:"us2y",         w:.04,dir:"mid", good:3.0,  bad:5.0},
     {id:"ism",          w:.04,dir:"high",good:55,   bad:48},
     {id:"pceMom",       w:.03,dir:"mid", good:0.17, bad:0.3},
-    {id:"ppiMom",       w:.06,dir:"mid", good:0.2,  bad:0.5},   // ridotto - volatile
+    {id:"ppiMom",       w:.06,dir:"mid", good:0.2,  bad:0.5},
   ],
   recession: [
-    {id:"yieldCurve",   w:.15,dir:"low", good:-1.0, bad:0.5},   // il più polarizzante
-    {id:"lei",          w:.12,dir:"low", good:98.5, bad:101.5},  // polarizzante
-    {id:"hySpread",     w:.10,dir:"high",good:7.0,  bad:3.0},   // polarizzante
-    {id:"cfnai",        w:.08,dir:"low", good:-0.7, bad:0.2},   // polarizzante
+    {id:"yieldCurve",   w:.15,dir:"low", good:-1.0, bad:0.5},
+    {id:"lei",          w:.12,dir:"low", good:98.5, bad:101.5},
+    {id:"hySpread",     w:.10,dir:"high",good:7.0,  bad:3.0},
+    {id:"cfnai",        w:.08,dir:"low", good:-0.7, bad:0.2},
     {id:"jobless",      w:.07,dir:"high",good:380,  bad:210},
     {id:"nfp",          w:.07,dir:"low", good:80,   bad:250},
     {id:"ism",          w:.06,dir:"low", good:44,   bad:52},
@@ -420,14 +380,14 @@ const SCENARIO_CFG = {
     {id:"pcce",         w:.03,dir:"high",good:1.0,  bad:0.5},
     {id:"btpBund",      w:.03,dir:"high",good:1.5,  bad:0.5},
     {id:"us2y",         w:.03,dir:"low", good:2.0,  bad:5.0},
-    {id:"move",         w:.03,dir:"high",good:120,  bad:70},    // ridotto - volatile
-    {id:"ppiMom",       w:.06,dir:"low", good:0.0,  bad:0.5},   // ridotto - volatile
+    {id:"move",         w:.03,dir:"high",good:120,  bad:70},
+    {id:"ppiMom",       w:.06,dir:"low", good:0.0,  bad:0.5},
   ],
   reflation: [
-    {id:"ismNewOrders", w:.12,dir:"high",good:58,   bad:48},    // polarizzante
-    {id:"yieldCurve",   w:.10,dir:"high",good:1.5,  bad:0.0},   // polarizzante
-    {id:"ppi",          w:.10,dir:"high",good:4.0,  bad:1.0},   // polarizzante
-    {id:"copperGold",   w:.09,dir:"high",good:0.003,bad:0.001}, // polarizzante
+    {id:"ismNewOrders", w:.12,dir:"high",good:58,   bad:48},
+    {id:"yieldCurve",   w:.10,dir:"high",good:1.5,  bad:0.0},
+    {id:"ppi",          w:.10,dir:"high",good:4.0,  bad:1.0},
+    {id:"copperGold",   w:.09,dir:"high",good:0.003,bad:0.001},
     {id:"cpi",          w:.08,dir:"high",good:3.5,  bad:1.0},
     {id:"bdi",          w:.07,dir:"high",good:2500, bad:800},
     {id:"ism",          w:.07,dir:"high",good:55,   bad:48},
@@ -436,14 +396,14 @@ const SCENARIO_CFG = {
     {id:"spx",          w:.05,dir:"high",good:7000, bad:5000},
     {id:"us10y",        w:.05,dir:"high",good:4.5,  bad:2.0},
     {id:"cpiMom",       w:.04,dir:"high",good:0.4,  bad:0.0},
-    {id:"oil",          w:.03,dir:"high",good:85,   bad:55},    // ridotto - volatile
-    {id:"ppiMom",       w:.06,dir:"high",good:0.5,  bad:0.0},   // ridotto - volatile
+    {id:"oil",          w:.03,dir:"high",good:85,   bad:55},
+    {id:"ppiMom",       w:.06,dir:"high",good:0.5,  bad:0.0},
   ],
   disinflation: [
-    {id:"breakeven",    w:.14,dir:"low", good:2.0,  bad:3.0},   // polarizzante
-    {id:"pceMom",       w:.12,dir:"low", good:0.1,  bad:0.3},   // polarizzante
-    {id:"yieldCurve",   w:.10,dir:"high",good:1.0,  bad:-0.5},  // polarizzante
-    {id:"cpi",          w:.09,dir:"low", good:2.0,  bad:5.0},   // polarizzante
+    {id:"breakeven",    w:.14,dir:"low", good:2.0,  bad:3.0},
+    {id:"pceMom",       w:.12,dir:"low", good:0.1,  bad:0.3},
+    {id:"yieldCurve",   w:.10,dir:"high",good:1.0,  bad:-0.5},
+    {id:"cpi",          w:.09,dir:"low", good:2.0,  bad:5.0},
     {id:"ppi",          w:.08,dir:"low", good:1.5,  bad:5.0},
     {id:"m2Dxy",        w:.06,dir:"low", good:210,  bad:235},
     {id:"us2y",         w:.07,dir:"low", good:2.5,  bad:5.0},
@@ -455,46 +415,46 @@ const SCENARIO_CFG = {
     {id:"cpiMom",       w:.04,dir:"low", good:0.1,  bad:0.35},
     {id:"bdi",          w:.03,dir:"low", good:800,  bad:2500},
     {id:"ismNewOrders", w:.03,dir:"low", good:47,   bad:56},
-    {id:"oil",          w:.02,dir:"low", good:55,   bad:100},   // ridotto - volatile
-    {id:"ppiMom",       w:.06,dir:"low", good:0.0,  bad:0.5},   // ridotto - volatile
+    {id:"oil",          w:.02,dir:"low", good:55,   bad:100},
+    {id:"ppiMom",       w:.06,dir:"low", good:0.0,  bad:0.5},
   ],
   dollarweakness: [
-    {id:"spread2y",     w:.15,dir:"low", good:0.5,  bad:1.8},   // il più polarizzante
-    {id:"dxy",          w:.13,dir:"low", good:97,   bad:107},   // polarizzante
-    {id:"realYield",    w:.12,dir:"low", good:-0.5, bad:1.5},   // polarizzante
-    {id:"spread10y",    w:.10,dir:"low", good:0.5,  bad:1.8},   // polarizzante
-    {id:"m2Dxy",        w:.10,dir:"high",good:230,  bad:210},   // polarizzante
-    {id:"euribor",      w:.10,dir:"high",good:3.5,  bad:1.5},   // BCE hawkish = EUR forte
+    {id:"spread2y",     w:.15,dir:"low", good:0.5,  bad:1.8},
+    {id:"dxy",          w:.13,dir:"low", good:97,   bad:107},
+    {id:"realYield",    w:.12,dir:"low", good:-0.5, bad:1.5},
+    {id:"spread10y",    w:.10,dir:"low", good:0.5,  bad:1.8},
+    {id:"m2Dxy",        w:.10,dir:"high",good:230,  bad:210},
+    {id:"euribor",      w:.10,dir:"high",good:3.5,  bad:1.5},
     {id:"de02y",        w:.08,dir:"high",good:3.0,  bad:1.5},
     {id:"breakeven",    w:.07,dir:"high",good:2.8,  bad:2.0},
     {id:"emSpread",     w:.05,dir:"low", good:2.5,  bad:6.0},
     {id:"hySpread",     w:.04,dir:"low", good:3.0,  bad:7.0},
-    {id:"vix",          w:.03,dir:"low", good:15,   bad:30},    // ridotto - volatile
-    {id:"ppiMom",       w:.06,dir:"high",good:0.35, bad:0.0},   // ridotto - volatile
+    {id:"vix",          w:.03,dir:"low", good:15,   bad:30},
+    {id:"ppiMom",       w:.06,dir:"high",good:0.35, bad:0.0},
     {id:"spx",          w:.04,dir:"high",good:7000, bad:5000},
     {id:"vvixVix",      w:.03,dir:"low", good:4.0,  bad:7.0},
   ],
   dollarweaknessbtc: [
-    {id:"spread2y",     w:.14,dir:"low", good:0.5,  bad:1.8},   // polarizzante
-    {id:"dxy",          w:.13,dir:"low", good:97,   bad:107},   // polarizzante
-    {id:"realYield",    w:.12,dir:"low", good:-0.5, bad:1.5},   // polarizzante
-    {id:"m2Dxy",        w:.11,dir:"high",good:230,  bad:210},   // polarizzante
+    {id:"spread2y",     w:.14,dir:"low", good:0.5,  bad:1.8},
+    {id:"dxy",          w:.13,dir:"low", good:97,   bad:107},
+    {id:"realYield",    w:.12,dir:"low", good:-0.5, bad:1.5},
+    {id:"m2Dxy",        w:.11,dir:"high",good:230,  bad:210},
     {id:"breakeven",    w:.10,dir:"high",good:2.8,  bad:2.0},
     {id:"euribor",      w:.09,dir:"high",good:3.5,  bad:1.5},
     {id:"de02y",        w:.07,dir:"high",good:3.0,  bad:1.5},
     {id:"spx",          w:.06,dir:"high",good:7000, bad:5000},
     {id:"pceMom",       w:.05,dir:"high",good:0.3,  bad:0.0},
     {id:"vvixVix",      w:.04,dir:"low", good:4.0,  bad:7.0},
-    {id:"vix",          w:.03,dir:"low", good:15,   bad:35},    // ridotto - volatile
-    {id:"crb",          w:.06,dir:"high",good:400,  bad:280},   // ridotto - volatile
-    {id:"ppiMom",       w:.06,dir:"high",good:0.35, bad:0.0},   // ridotto - volatile
+    {id:"vix",          w:.03,dir:"low", good:15,   bad:35},
+    {id:"crb",          w:.06,dir:"high",good:400,  bad:280},
+    {id:"ppiMom",       w:.06,dir:"high",good:0.35, bad:0.0},
   ],
   deflation: [
-    {id:"yieldCurve",   w:.12,dir:"low", good:-1.0, bad:1.0},   // polarizzante
-    {id:"hySpread",     w:.10,dir:"high",good:8.0,  bad:3.0},   // polarizzante
-    {id:"cpi",          w:.10,dir:"low", good:0.5,  bad:3.0},   // polarizzante
-    {id:"m2Dxy",        w:.08,dir:"low", good:205,  bad:235},   // polarizzante
-    {id:"cfnai",        w:.08,dir:"low", good:-0.7, bad:0.2},   // polarizzante
+    {id:"yieldCurve",   w:.12,dir:"low", good:-1.0, bad:1.0},
+    {id:"hySpread",     w:.10,dir:"high",good:8.0,  bad:3.0},
+    {id:"cpi",          w:.10,dir:"low", good:0.5,  bad:3.0},
+    {id:"m2Dxy",        w:.08,dir:"low", good:205,  bad:235},
+    {id:"cfnai",        w:.08,dir:"low", good:-0.7, bad:0.2},
     {id:"cpiMom",       w:.08,dir:"low", good:-0.1, bad:0.3},
     {id:"lei",          w:.07,dir:"low", good:98,   bad:102},
     {id:"ismNewOrders", w:.06,dir:"low", good:40,   bad:50},
@@ -506,19 +466,165 @@ const SCENARIO_CFG = {
     {id:"us2y",         w:.03,dir:"low", good:1.0,  bad:5.0},
     {id:"emSpread",     w:.03,dir:"high",good:6.0,  bad:3.0},
     {id:"housingStarts",w:.03,dir:"low", good:900,  bad:1600},
-    {id:"vix",          w:.03,dir:"high",good:40,   bad:15},    // ridotto - volatile
-    {id:"bdi",          w:.02,dir:"low", good:500,  bad:2000},  // ridotto - volatile
+    {id:"vix",          w:.03,dir:"high",good:40,   bad:15},
+    {id:"bdi",          w:.02,dir:"low", good:500,  bad:2000},
   ],
 };
 
-// ── APP ───────────────────────────────────────────────────────────
+// ── RISK MOM (intraday) ───────────────────────────────────────────
+let RISK_MOM_DATA=[
+  {t:"HYG", n:"iShares iBoxx High Yield", p:79.00, g:null, w:null},
+  {t:"CPER",n:"US Copper Index Fund",     p:30.00, g:null, w:null},
+  {t:"USO", n:"US Oil Fund (WTI)",        p:78.00, g:null, w:null},
+];
+function buildPriceMap(){
+  const m={};
+  SCENARIOS.forEach(s=>s.etfs.forEach(e=>{if(!m[e.t])m[e.t]=e;}));
+  ETF_NAZIONALI.forEach(e=>{if(!m[e.t])m[e.t]=e;});
+  RISK_MOM_DATA.forEach(e=>{m[e.t]=e;});
+  return m;
+}
+function isUSOpen(){
+  try{
+    const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Europe/Rome",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(new Date());
+    const h=parseInt(parts.find(p=>p.type==="hour").value,10);
+    const mn=parseInt(parts.find(p=>p.type==="minute").value,10);
+    return (h*60+mn)>=(15*60+30);
+  }catch(e){return new Date().getHours()>=15;}
+}
+const RISK_MOM_CFG=[
+  {label:"SPY/IEF",  num:"SPY", den:"IEF", w:0.25, scale:2.5},
+  {label:"HYG/LQD",  num:"HYG", den:"LQD", w:0.20, scale:0.8},
+  {label:"SPY",      num:"SPY", den:null,  w:0.10, scale:2.5},
+  {label:"QQQ",      num:"QQQ", den:null,  w:0.10, scale:3.0},
+  {label:"CPER/GLD", num:"CPER",den:"GLD", w:0.12, scale:2.5},
+  {label:"XLY/XLP",  num:"XLY", den:"XLP", w:0.08, scale:2.0},
+  {label:"IBIT/GLD", num:"IBIT",den:"GLD", w:0.08, scale:4.0},
+  {label:"CPER/USO", num:"CPER",den:"USO", w:0.07, scale:3.0},
+];
+function riskMomBlend(e,morning){
+  if(!e)return null;
+  const g=e.g,w=e.w;
+  const hasG=g!=null&&!isNaN(g),hasW=w!=null&&!isNaN(w);
+  if(morning){return hasW?w:null;}
+  if(hasG&&hasW)return g*0.70+w*0.30;
+  if(hasG)return g;
+  if(hasW)return w;
+  return null;
+}
+function calcRiskMomDetail(){
+  const map=buildPriceMap();
+  const morning=!isUSOpen();
+  const rows=[];let tw=0,ts=0;
+  RISK_MOM_CFG.forEach(c=>{
+    const num=map[c.num],den=c.den?map[c.den]:null;
+    let pct=null;
+    if(c.den){
+      const bn=riskMomBlend(num,morning),bd=riskMomBlend(den,morning);
+      if(bn!=null&&bd!=null)pct=bn-bd;
+    }else{
+      pct=riskMomBlend(num,morning);
+    }
+    let score=null;
+    if(pct!=null&&!isNaN(pct)){score=Math.max(0,Math.min(100,50+(pct/c.scale)*50));}
+    rows.push({...c,pct,score});
+    if(score!=null){ts+=score*c.w;tw+=c.w;}
+  });
+  return {score:tw>0?ts/tw:50,rows,morning};
+}
+function calcRiskLead(){
+  const IND=INDICATORS;
+  function rs(v,riskOnGood,riskOnBad){
+    if(v==null||isNaN(v))return 50;
+    if(riskOnGood>riskOnBad){if(v>=riskOnGood)return 100;if(v<=riskOnBad)return 0;return((v-riskOnBad)/(riskOnGood-riskOnBad))*100;}
+    if(v<=riskOnGood)return 100;if(v>=riskOnBad)return 0;return((riskOnBad-v)/(riskOnBad-riskOnGood))*100;
+  }
+  const deCurve=(IND.de02y!=null&&IND.us10y!=null)?2.937-IND.de02y:null;
+  const scores=[
+    {s:rs(IND.ism,55,44),w:4},{s:rs(IND.ismNewOrders,55,44),w:4},{s:rs(IND.ismEmployment,53,44),w:3},
+    {s:rs(IND.lei,101.5,98),w:4},{s:rs(IND.cfnai,0.2,-0.7),w:2},{s:rs(IND.ifo,102,85),w:2},
+    {s:rs(IND.retailSales,5,1),w:2},{s:rs(IND.housingStarts,1500,1100),w:2},{s:rs(IND.nfp,250,80),w:3},
+    {s:rs(IND.jobless,180,380),w:3},{s:rs(IND.bdi,2500,800),w:2},{s:rs(IND.copperGold,0.003,0.001),w:3},
+    {s:rs(IND.vix,13,35),w:7},{s:rs(IND.move,70,120),w:3},{s:rs(IND.pcc,0.7,1.2),w:2},{s:rs(IND.pcce,0.6,1.1),w:2},
+    {s:rs(IND.hySpread,2.5,7.0),w:6},{s:rs(IND.igSpread,0.6,2.0),w:3},{s:rs(IND.emSpread,2.5,6.0),w:2},{s:rs(IND.tedSpread,0.1,0.5),w:2},
+    {s:rs(IND.yieldCurve,1.5,-0.5),w:4},{s:rs(deCurve,1.5,-0.3),w:3},{s:rs(IND.realYield,-0.5,2.5),w:3},
+    {s:rs(IND.us2y,2.0,5.0),w:2},{s:rs(IND.de02y,1.5,4.0),w:2},{s:rs(IND.euribor,1.5,4.0),w:2},
+    {s:rs(IND.spread2y,0.5,2.0),w:1},{s:rs(IND.spread10y,0.5,2.0),w:1},
+    {s:rs(IND.ppiMom,0.0,0.5),w:3},{s:rs(IND.ppiCoreMom,0.0,0.4),w:2},{s:rs(IND.cpiMom,0.1,0.4),w:3},
+    {s:rs(IND.cpiCoreMom,0.1,0.35),w:3},{s:rs(IND.pceMom,0.1,0.35),w:3},{s:rs(IND.ppi,1.5,5.0),w:2},
+    {s:rs(IND.cpi,2.0,4.5),w:2},{s:rs(IND.pce,2.0,4.0),w:2},{s:rs(IND.breakeven,2.0,3.0),w:2},{s:rs(IND.ismPricesPaid,40,90),w:2},
+    {s:rs(IND.m2Dxy,225,200),w:3},{s:rs(IND.dxy,90,110),w:3},{s:rs(IND.oil,50,130),w:1},{s:rs(IND.crb,260,450),w:1},
+    {s:rs(IND.euCpiMom,0.1,0.4),w:1},{s:rs(IND.euPpiMom,-0.5,0.5),w:1},
+    {s:(IND.athi!=null&&IND.atlo!=null&&(IND.athi+IND.atlo)>0)?rs(IND.athi/(IND.athi+IND.atlo)*100,70,30):50,w:5},
+    {s:rs(IND.trin,0.5,1.5),w:3},{s:rs(IND.spx,8000,5000),w:5},
+    {s:rs(IND.us10y,2.0,4.0)*-1+100,w:2},
+    {s:IND.vvixVix!=null?rs(IND.vvixVix,3,7)*-1+100:50,w:2},
+    {s:IND.dtb3!=null?rs(IND.dtb3,2.0,3.5)*-1+100:50,w:1},
+    {s:IND.sofr!=null?rs(IND.sofr,2.0,3.5)*-1+100:50,w:1},
+    {s:IND.euCpiCoreMom!=null?rs(IND.euCpiCoreMom,0,0.17)*-1+100:50,w:1},
+    {s:IND.euPpiYoy!=null?rs(IND.euPpiYoy,-2,1.5)*-1+100:50,w:1},
+    {s:IND.btpBund!=null?rs(IND.btpBund,0.5,0.9)*-1+100:50,w:2},
+    {s:IND.euur!=null?rs(IND.euur,5,7)*-1+100:50,w:1},
+    {s:IND.eujvr!=null?rs(IND.eujvr,0.5,1.5)*-1+100:50,w:1},
+    {s:IND.de10y!=null?rs(IND.de10y,1.0,2.5)*-1+100:50,w:1},
+    {s:IND.sx5e!=null?rs(IND.sx5e,3500,6500):50,w:2},
+    {s:IND.eursyy!=null?rs(IND.eursyy,0,4.0):50,w:1},
+    {s:IND.deppimm!=null?rs(IND.deppimm,-0.5,0.5)*-1+100:50,w:1},
+    {s:IND.deppiyy!=null?rs(IND.deppiyy,-2,4.0)*-1+100:50,w:1},
+  ];
+  const totalW=scores.reduce((a,b)=>a+b.w,0);
+  return scores.reduce((a,b)=>a+b.s*b.w,0)/totalW;
+}
+function calcAllocation(score,active){
+  const t=Math.max(0,Math.min(100,score))/100;
+  let pRisk=15+t*55;
+  let pCash=35-t*30;
+  let pDef=100-pRisk-pCash;
+  if(active.includes("stagflation")||active.includes("debasement")){pDef+=10;pRisk-=10;}
+  if(active.includes("recession")){pCash+=10;pRisk-=10;}
+  if(active.includes("goldilocks")){pRisk+=10;pDef-=10;}
+  pRisk=Math.max(0,pRisk);pDef=Math.max(0,pDef);pCash=Math.max(0,pCash);
+  const sum=pRisk+pDef+pCash||1;
+  let rRisk=Math.round(pRisk/sum*100);
+  let rDef=Math.round(pDef/sum*100);
+  let rCash=100-rRisk-rDef;
+  return {pRisk:rRisk,pDef:rDef,pCash:rCash};
+}
+const ORIENTATION={
+  SPY:"riskon",QQQ:"riskon",XLK:"riskon",XLY:"riskon",SMH:"riskon",IWM:"riskon",VTI:"riskon",URTH:"riskon",
+  EEM:"riskon",IBIT:"riskon",SX5E:"riskon",VTV:"riskon",XLF:"riskon",XLI:"riskon",IXUS:"riskon",ITA:"riskon",
+  SCHD:"riskon",HYG:"riskon",
+  XLU:"difensivo",XLP:"difensivo",XLV:"difensivo",TLT:"difensivo",IEF:"difensivo",SHY:"difensivo",
+  BIL:"difensivo",LQD:"difensivo",VDST:"difensivo",FXF:"difensivo",
+  GLD:"reale",SLV:"reale",DBC:"reale",XLE:"reale",DBA:"reale",MOO:"reale",XLB:"reale",COPX:"reale",
+  XME:"reale",SIL:"reale",GDX:"reale",REMX:"reale",URA:"reale",TIP:"reale",
+};
+function gateInfo(ticker,riskMom,leadActiveMax){
+  const o=ORIENTATION[ticker]||"riskon";
+  let v;
+  if(o==="difensivo")v=100-riskMom;
+  else if(o==="reale")v=leadActiveMax;
+  else v=riskMom;
+  const col=v>=60?"#10B981":v<=40?"#EF4444":"#F59E0B";
+  const label=o==="riskon"?"risk-on":o==="difensivo"?"difensivo":"reale";
+  return {col,label,v,o};
+}
+function GatePill({ticker,riskMom,leadActiveMax}){
+  const g=gateInfo(ticker,riskMom,leadActiveMax);
+  const dot=g.col==="#10B981"?"🟢":g.col==="#EF4444"?"🔴":"🟡";
+  return <div title={"Gate "+g.label} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
+    <div style={{fontSize:6,color:"#475569",letterSpacing:1}}>GATE</div>
+    <span style={{fontSize:14,lineHeight:1}}>{dot}</span>
+  </div>;
+}
+
+// ── PARSER ──────────────────────────────────────────────────────
 function extractNum(s){
   if(!s||s==="-"||s==="#N/A"||s==="")return null;
   var tabs=s.trim().split("\t");
   for(var i=tabs.length-1;i>=0;i--){
     var p=tabs[i].trim();
     if(!p)continue;
-    // Strip units
     var raw=p.split("%")[0].split("USD")[0].split("EUR")[0]
              .split("POINT")[0].split("K PSN")[0].split("PSN")[0]
              .split("MUNIT")[0].split(" B")[0].trim();
@@ -529,69 +635,40 @@ function extractNum(s){
     var hasComma=raw.indexOf(",")>=0;
     var hasDot=raw.indexOf(".")>=0;
     if(hasComma&&hasDot){
-      // Both present: figure out which is thousands and which is decimal
       var di=raw.indexOf(".");var ci=raw.indexOf(",");
-      if(di<ci){
-        // dot is thousands sep: 1.234,56
-        numStr=raw.split(".").join("").split(",").join(".");
-      } else {
-        // comma is thousands sep: 1,234.56
-        numStr=raw.split(",").join("");
-      }
+      if(di<ci){numStr=raw.split(".").join("").split(",").join(".");}
+      else{numStr=raw.split(",").join("");}
     } else if(hasComma&&!hasDot){
-      // Only comma: "2,978" or "1,235" or "405,000"
       var parts=raw.split(",");
       var after=parts[parts.length-1];
       var before=parts[0];
-      // Thousands only if: suffix is "000" (e.g. "405,000") OR before >= 1000 (e.g. "1,234,567")
-      // Otherwise decimal: "3,880" → 3.880, "1,235" → 1.235
-      if(after.length===3&&(after==="000"||parseFloat(before)>=1000)){
-        numStr=raw.split(",").join("");
-      } else {
-        numStr=raw.split(",").join(".");
-      }
+      if(after.length===3&&(after==="000"||parseFloat(before)>=1000)){numStr=raw.split(",").join("");}
+      else{numStr=raw.split(",").join(".");}
     } else if(!hasComma&&hasDot){
-      // Only dot: e.g. "2.978" or "2.39" or "405.000" or "1.235"
       var parts2=raw.split(".");
-      // Multiple dots: e.g. "1.234.567" → thousands
-      if(parts2.length>2){
-        numStr=raw.split(".").join("");
-      } else {
+      if(parts2.length>2){numStr=raw.split(".").join("");}
+      else{
         var after2=parts2[1];
         var before2=parts2[0];
-        // .000 suffix → always thousands
-        if(after2==="000"){
-          numStr=raw.split(".").join("");
-        } else if(after2.length===3&&parseFloat(before2)>=1000){
-          // before >= 1000 and 3 digits after → definitely thousands
-          numStr=raw.split(".").join("");
-        } else {
-          // ambiguous: treat as decimal (safer for financial ratios/yields)
-          numStr=raw;
-        }
+        if(after2==="000"){numStr=raw.split(".").join("");}
+        else if(after2.length===3&&parseFloat(before2)>=1000){numStr=raw.split(".").join("");}
+        else{numStr=raw;}
       }
-    } else {
-      // No separator: plain integer
-      numStr=raw;
-    }
+    } else {numStr=raw;}
     if(neg)numStr="-"+numStr;
     var n=parseFloat(numStr);
     if(!isNaN(n))return n;
   }
   return null;
 }
-
 function pPct(s){
   if(!s||s==="#N/A"||s==="-"||s==="")return null;
-  var t=s.toString().split("%")[0].split(" ")[0].split(" ")[0];
+  var t=s.toString().split("%")[0].split(" ")[0].split(" ")[0];
   t=t.split(",").join(".");
   var n=parseFloat(t);
   return isNaN(n)?null:n;
 }
-function pPx(s){
-  if(!s)return null;
-  return extractNum(s);
-}
+function pPx(s){if(!s)return null;return extractNum(s);}
 function pCSV(line){
   var r=[];var c="";var q=false;
   for(var i=0;i<line.length;i++){
@@ -606,18 +683,21 @@ function parseScenariCSV(text){
   var SCEN_MAP={"GOLDILOCKS ECONOMY":"goldilocks","RECESSION":"recession","STAGFLATION":"stagflation","REFLATION":"reflation","DISINFLATION/SOFT LANDING":"disinflation","DOLLAR WEAKNESS/GLOBAL REBALANCING +BITCOIN":"dollarweaknessbtc","DOLLAR WEAKNESS/GLOBAL REBALANCING":"dollarweakness","DEFLATION":"deflation","DEBASEMENT AGGRESSIVO":"debasementbtc","DEBASEMENT (SENZA BITCOIN)":"debasement"};
   var lines=text.split("\n");
   var upd={};var cur=null;var etfs=[];
+  var riskMom=[];var inRiskMom=false;
+  function flush(){ if(cur&&etfs.length){if(!upd[cur])upd[cur]={etfs:[],avg:{}};upd[cur].etfs=etfs.slice();} }
   for(var li=0;li<lines.length;li++){
     var line=lines[li].split("\r").join("");
     var cols=pCSV(line);
     var f=(cols[0]||"").trim().toUpperCase();
-    if(!f){
-      if(cur&&etfs.length){if(!upd[cur])upd[cur]={etfs:[],avg:{}};upd[cur].etfs=etfs.slice();}
-      continue;
-    }
+    if(!f){ flush(); continue; }
+    if(f==="RISK MOM"){ flush(); cur=null; inRiskMom=true; etfs=[]; continue; }
     var sid=SCEN_MAP[f];
-    if(sid){
-      if(cur&&etfs.length){if(!upd[cur])upd[cur]={etfs:[],avg:{}};upd[cur].etfs=etfs.slice();}
-      cur=sid;etfs=[];continue;
+    if(sid){ flush(); cur=sid; inRiskMom=false; etfs=[]; continue; }
+    if(inRiskMom){
+      if(f==="TICKER"||!cols[0]||!cols[2])continue;
+      var rm={t:cols[0].trim(),n:cols[1]||"",p:pPx(cols[2]),g:pPct(cols[3]),w:pPct(cols[4]),m:pPct(cols[5]),q:pPct(cols[6]),s:pPct(cols[7]),y:pPct(cols[8])};
+      if(rm.p)riskMom.push(rm);
+      continue;
     }
     if(!cur)continue;
     if(f==="VAR.% MEDIA"){
@@ -629,8 +709,8 @@ function parseScenariCSV(text){
     var e={t:cols[0].trim(),n:cols[1]||"",p:pPx(cols[2]),g:pPct(cols[3]),w:pPct(cols[4]),m:pPct(cols[5]),q:pPct(cols[6]),s:pPct(cols[7]),y:pPct(cols[8]),y2:pPct(cols[9]),y3:pPct(cols[10]),y5:pPct(cols[11])};
     if(e.p)etfs.push(e);
   }
-  if(cur&&etfs.length){if(!upd[cur])upd[cur]={etfs:[],avg:{}};upd[cur].etfs=etfs.slice();}
-  return upd;
+  flush();
+  return {scenari:upd, riskMom:riskMom};
 }
 function parseNazionaliCSV(text){
   var lines=text.split("\n");
@@ -670,43 +750,32 @@ function parseIndicatoriCSV(text){
     if(!key)continue;
     var val=extractNum(valStr);
     if(key==="euribor"&&val!==null&&val>90)val=100-val;
-    // Scaling post-parsing per indicatori con valori grandi (evita misparse italiano)
-    if(key==="housingStarts"&&val!==null&&val<10)val=val*1000;   // 1.5 → 1500
-    if(key==="bdi"&&val!==null&&val<100)val=val*1000;             // 2.978 → 2978
-    if(key==="spx"&&val!==null&&val<1000)val=val*1000;            // 7.230 → 7230
-    if(key==="sx5e"&&val!==null&&val<1000)val=val*1000;           // 5.881 → 5881
-    if(key==="athi"&&val!==null&&val<10000)val=val*1000;          // 405 → 405000
-    if(key==="atlo"&&val!==null&&val<10000)val=val*1000;          // 226 → 226000
+    if(key==="housingStarts"&&val!==null&&val<10)val=val*1000;
+    if(key==="bdi"&&val!==null&&val<100)val=val*1000;
+    if(key==="spx"&&val!==null&&val<1000)val=val*1000;
+    if(key==="sx5e"&&val!==null&&val<1000)val=val*1000;
+    if(key==="athi"&&val!==null&&val<10000)val=val*1000;
+    if(key==="atlo"&&val!==null&&val<10000)val=val*1000;
     if(val!==null)upd[key]=val;
   }
   return upd;
 }
 function parseMacroText(text){
-  var TM={"T10Y2Y":"yieldCurve","VIX":"vix","MOVE":"move","USBCOI":"ism","USMNO":"ismNewOrders","USMEMP":"ismEmployment","USMPR":"ismPricesPaid","USCIR":"cpi","USPPIYY":"ppi","USCPCEPIAC":"pce","USCCEPIAC":"pce","USPPIMM":"ppiMom","USCPCEPIMM":"pceMom","USIRMM":"cpiMom","DTB3":"dtb3","SOFR":"sofr","EUJVR":"eujvr","EUUR":"euur","EUIRYY":"euCpi","EUIRMM":"euCpiMom","EUCIRMM":"euCpiCoreMom","EUPPIMM":"euPpiMom","EUPPIYY":"euPpiYoy","DEPPIMM":"deppimm","DEPPIYY":"deppiyy","EURSYY":"eursyy","USRSYY":"retailSales","USHST":"housingStarts","M2SL/DXY":"m2Dxy","VVIX/VIX":"vvixVix","USNFP":"nfp","TRIN.NY":"trin","ATHI.NY":"athi","ATLO.NY":"atlo","USALOLITOAASTSAM":"lei","TRJEFFCRB":"crb","BDI":"bdi","DEIFOE":"ifo","USIJC":"jobless","USCFNAI":"cfnai","USCENAI":"cfnai","BAMLCOA0CM":"igSpread","BAMLCOAOCM":"igSpread","BAMLC0A0CM":"igSpread","BAMLHOAOHYM2":"hySpread","BAMLH0A0HYM2":"hySpread","BAMLEMHBHYCRPIOAS":"emSpread","PCC":"pcc","PCCE":"pcce","US10Y":"us10y","DFII10":"realYield","T5YIE":"breakeven","USO2Y":"us2y","US02Y":"us2y","US10Y-DE10Y":"spread10y","US1OY-DE10Y":"spread10y","US10Y-DE1OY":"spread10y","DE10Y-DE02Y":"deCurve","USO2Y-DEO2Y":"spread2y","US02Y-DE02Y":"spread2y","USO2Y-DE02Y":"spread2y","US02Y-DEO2Y":"spread2y","IT10Y-DE10Y":"btpBund","IT1OY-DE10Y":"btpBund","DE10Y":"de10y","DEO2Y":"de02y","DE02Y":"de02y","EURUSD":"eurusd","DXY":"dxy","USOIL":"oil","HG1!/GC1!":"copperGold","HG 1!/GC1!":"copperGold","SPX":"spx","SX5E":"sx5e","11!":"euribor","USCPPMM":"ppiCoreMom","USCIRMM":"cpiCoreMom","USBCOL":"ism","USBCOI":"ism","USOLL":"oil","USOIL":"oil","BAMLCOACM":"igSpread","BAMLCOAOCM":"igSpread","USCCEPIMM":"pceMom","USCPCEPIMM":"pceMom"};
+  var TM={"T10Y2Y":"yieldCurve","VIX":"vix","MOVE":"move","USBCOI":"ism","USMNO":"ismNewOrders","USMEMP":"ismEmployment","USMPR":"ismPricesPaid","USCIR":"cpi","USPPIYY":"ppi","USCPCEPIAC":"pce","USCCEPIAC":"pce","USPPIMM":"ppiMom","USCPCEPIMM":"pceMom","USIRMM":"cpiMom","DTB3":"dtb3","SOFR":"sofr","EUJVR":"eujvr","EUUR":"euur","EUIRYY":"euCpi","EUIRMM":"euCpiMom","EUCIRMM":"euCpiCoreMom","EUPPIMM":"euPpiMom","EUPPIYY":"euPpiYoy","DEPPIMM":"deppimm","DEPPIYY":"deppiyy","EURSYY":"eursyy","USRSYY":"retailSales","USHST":"housingStarts","M2SL/DXY":"m2Dxy","VVIX/VIX":"vvixVix","USNFP":"nfp","TRIN.NY":"trin","ATHI.NY":"athi","ATLO.NY":"atlo","USALOLITOAASTSAM":"lei","TRJEFFCRB":"crb","BDI":"bdi","DEIFOE":"ifo","USIJC":"jobless","USCFNAI":"cfnai","USCENAI":"cfnai","BAMLCOA0CM":"igSpread","BAMLCOAOCM":"igSpread","BAMLC0A0CM":"igSpread","BAMLHOAOHYM2":"hySpread","BAMLH0A0HYM2":"hySpread","BAMLEMHBHYCRPIOAS":"emSpread","PCC":"pcc","PCCE":"pcce","US10Y":"us10y","DFII10":"realYield","T5YIE":"breakeven","USO2Y":"us2y","US02Y":"us2y","US10Y-DE10Y":"spread10y","US1OY-DE10Y":"spread10y","US10Y-DE1OY":"spread10y","DE10Y-DE02Y":"deCurve","USO2Y-DEO2Y":"spread2y","US02Y-DE02Y":"spread2y","USO2Y-DE02Y":"spread2y","US02Y-DEO2Y":"spread2y","IT10Y-DE10Y":"btpBund","IT1OY-DE10Y":"btpBund","DE10Y":"de10y","DEO2Y":"de02y","DE02Y":"de02y","EURUSD":"eurusd","DXY":"dxy","USOIL":"oil","HG1!/GC1!":"copperGold","HG 1!/GC1!":"copperGold","SPX":"spx","SX5E":"sx5e","11!":"euribor","USCPPMM":"ppiCoreMom","USCIRMM":"cpiCoreMom","USBCOL":"ism","USOLL":"oil","BAMLCOACM":"igSpread"};
   var upd={};
-  var lines=text.split("\n");  var notFound=[];
+  var lines=text.split("\n");
   for(var li=0;li<lines.length;li++){
     var line=lines[li].split("\r").join("").trim();
     if(!line)continue;
     var parts=line.split("\t");
     var tk=parts[0].trim().toUpperCase();
     var key=TM[tk];
-    if(!key&&tk.length>2&&tk.length<30&&tk===tk.toUpperCase()&&tk.indexOf(" ")<0){
-      notFound.push(tk);
-    }
     if(key){
       var val=null;
-      if(parts.length>=2){
-        val=extractNum(parts.slice(1).join("\t"));
-      }
-      if(val===null&&li+1<lines.length){
-        val=extractNum(lines[li+1]);
-      }
-      if(val===null&&li+2<lines.length){
-        val=extractNum(lines[li+2]);
-      }
+      if(parts.length>=2){val=extractNum(parts.slice(1).join("\t"));}
+      if(val===null&&li+1<lines.length){val=extractNum(lines[li+1]);}
+      if(val===null&&li+2<lines.length){val=extractNum(lines[li+2]);}
       if(key==="euribor"&&val!==null&&val>90)val=100-val;
-      // Scaling post-parsing per indicatori con valori grandi
       if(key==="housingStarts"&&val!==null&&val<10)val=val*1000;
       if(key==="bdi"&&val!==null&&val<100)val=val*1000;
       if(key==="spx"&&val!==null&&val<1000)val=val*1000;
@@ -720,7 +789,6 @@ function parseMacroText(text){
 }
 
 // ── APP ─────────────────────────────────────────────────────────────
-
 export default function App(){
   const [tab,setTab]=useState("scenarios");
   const [sel,setSel]=useState(null);
@@ -732,24 +800,31 @@ export default function App(){
   const [refreshMsg,setRefreshMsg]=useState("");
   const [macroText,setMacroText]=useState("");
   const [renderKey,setRenderKey]=useState(0);
-  const [lastUpdate,setLastUpdate]=useState(LAST_UPDATE);
-  const [fetchStatus,setFetchStatus]=useState({sc:null,naz:null,macro:null,time:null});
+  const [fetchStatus,setFetchStatus]=useState({sc:null,naz:null,macro:null,rm:null,time:null});
 
   const sc=sel?SCENARIOS.find(s=>s.id===sel):null;
 
+  const SEED_HISTORY=[
+    {week:15,update:"08/04/2026",scores:{goldilocks:81.6,recession:10.2,stagflation:48.6,reflation:90.2,disinflation:25.5,dollarweakness:70.8,deflation:0.0,dollarweaknessbtc:34.4,debasementbtc:61.8,debasement:100.0}},
+    {week:16,update:"13/04/2026",scores:{goldilocks:81.6,recession:10.2,stagflation:48.6,reflation:90.2,disinflation:25.5,dollarweakness:70.8,deflation:0.0,dollarweaknessbtc:34.4,debasementbtc:61.8,debasement:100.0}},
+    {week:17,update:"20/04/2026",scores:{goldilocks:90.5,recession:12.5,stagflation:45.2,reflation:70.1,disinflation:26.9,dollarweakness:59.5,deflation:0.0,dollarweaknessbtc:35.2,debasementbtc:80.9,debasement:100.0}},
+    {week:18,update:"27/04/2026",scores:{goldilocks:100,recession:9,stagflation:47,reflation:65,disinflation:25,dollarweakness:55,deflation:0,dollarweaknessbtc:34,debasementbtc:78,debasement:87}},
+    {week:19,update:"29/04/2026",scores:{goldilocks:100,recession:0,stagflation:73,reflation:81,disinflation:34,dollarweakness:64,deflation:10,dollarweaknessbtc:23,debasementbtc:46,debasement:55}},
+  ];
+
   useEffect(function(){
-    // 1. Ripristina ETF e indicatori da localStorage
     try{
       var savedScen=localStorage.getItem("pr_scenarios");
-      if(savedScen){try{var sc=JSON.parse(savedScen);SCENARIOS.forEach(function(s){if(sc[s.id]&&sc[s.id].etfs&&sc[s.id].etfs.length>0){s.etfs=sc[s.id].etfs;if(sc[s.id].avg)Object.assign(s.avg,sc[s.id].avg);}});}catch(e){}}
+      if(savedScen){try{var scn=JSON.parse(savedScen);SCENARIOS.forEach(function(s){if(scn[s.id]&&scn[s.id].etfs&&scn[s.id].etfs.length>0){s.etfs=scn[s.id].etfs;if(scn[s.id].avg)Object.assign(s.avg,scn[s.id].avg);}});}catch(e){}}
       var savedNaz=localStorage.getItem("pr_nazionali");
       if(savedNaz){try{var naz=JSON.parse(savedNaz);if(naz&&naz.length>0){ETF_NAZIONALI.length=0;naz.forEach(function(e){ETF_NAZIONALI.push(e);});}}catch(e){}}
+      var savedRm=localStorage.getItem("pr_riskmom");
+      if(savedRm){try{var rm=JSON.parse(savedRm);if(rm&&rm.length>0){RISK_MOM_DATA.length=0;rm.forEach(function(e){RISK_MOM_DATA.push(e);});}}catch(e){}}
       var savedInd=localStorage.getItem("pr_indicators");
       if(savedInd){var ind=JSON.parse(savedInd);Object.keys(ind).forEach(function(k){INDICATORS[k]=ind[k];});}
       var savedPrev=localStorage.getItem("pr_prev_indicators");
       if(savedPrev){var prev=JSON.parse(savedPrev);Object.keys(prev).forEach(function(k){PREV_INDICATORS[k]=prev[k];});}
     }catch(e){}
-    // 2. Carica history da Google Drive (permanente, cross-device)
     fetch("https://drive.google.com/uc?export=download&id=1s6nF7_paJNgNJmuRotNPOpZKRodp8jMl")
       .then(function(r){return r.json();})
       .then(function(data){
@@ -766,28 +841,19 @@ export default function App(){
         }
       })
       .catch(function(){
-        // Fallback: usa localStorage se Drive non raggiungibile
         try{
           var bl=JSON.parse(localStorage.getItem("pr_week_baseline")||"null");
           if(bl){setHistory(function(h){var m=h.filter(function(x){return x.week!==bl.week;});m.push({week:bl.week,scores:bl.scores,update:"auto"});return m.sort(function(a,b){return a.week-b.week;});});}
         }catch(e){}
       })
-      .finally(function(){
-        setRenderKey(function(k){return k+1;});
-      });
+      .finally(function(){setRenderKey(function(k){return k+1;});});
   },[]);
 
   function autoSavePrevScores(){
-    // Salva baseline come CURRENT_WEEK-1 — così il secondo useEffect che aggiunge
-    // CURRENT_WEEK non la sovrascrive mai, nemmeno dopo F5
-    // Salva solo al primo refresh della settimana nuova
     try{
       var prevWeek=CURRENT_WEEK-1;
       var existing=localStorage.getItem("pr_week_baseline");
-      if(existing){
-        var bl=JSON.parse(existing);
-        if(bl.week===prevWeek) return; // già salvata come settimana precedente, non sovrascrivere
-      }
+      if(existing){var bl=JSON.parse(existing);if(bl.week===prevWeek)return;}
       var scores={};
       calcAllScores().forEach(function(s){scores[s.id]=s.composite;});
       localStorage.setItem("pr_week_baseline",JSON.stringify({week:prevWeek,scores:scores,savedAt:new Date().toISOString()}));
@@ -809,17 +875,16 @@ export default function App(){
     const URL_MACRO="https://docs.google.com/spreadsheets/d/1lAR8AO3c_7UiCnhvz_FW-r97Wh21ZjzR5D6QSiGZtrk/export?format=csv&gid=1320980954";
     const URL_NAZ="https://docs.google.com/spreadsheets/d/1lAR8AO3c_7UiCnhvz_FW-r97Wh21ZjzR5D6QSiGZtrk/export?format=csv&gid=2023978700";
     autoSavePrevScores();
-    setRefreshing(true);setRefreshMsg("Carico...");setFetchStatus({sc:null,naz:null,macro:null,time:null});
-    var stSc=false,stNaz=false,stMacro=false;
-    // Fetch sequenziale con pause tra un foglio e l'altro - evita throttling Google
+    setRefreshing(true);setRefreshMsg("Carico...");setFetchStatus({sc:null,naz:null,macro:null,rm:null,time:null});
+    var stSc=false,stNaz=false,stMacro=false,stRm=false;
     var r1=await fetchOneSheet(URL_SC);
     await new Promise(function(res){setTimeout(res,500);});
     var r2=await fetchOneSheet(URL_NAZ);
     await new Promise(function(res){setTimeout(res,500);});
     var r3=await fetchOneSheet(URL_MACRO);
-    // ── SCENARI ──
     if(r1){
-      var su=parseScenariCSV(r1);
+      var res=parseScenariCSV(r1);
+      var su=res.scenari;
       var scOk=0;
       SCENARIOS.forEach(function(s){
         var u=su[s.id];
@@ -830,26 +895,29 @@ export default function App(){
       });
       stSc=scOk>=SCENARIOS.length*0.7;
       if(stSc){try{var so={};SCENARIOS.forEach(function(s){so[s.id]={etfs:s.etfs,avg:s.avg};});localStorage.setItem("pr_scenarios",JSON.stringify(so));}catch(e){}}
+      if(res.riskMom&&res.riskMom.length>0){
+        RISK_MOM_DATA.length=0;res.riskMom.forEach(function(e){RISK_MOM_DATA.push(e);});
+        stRm=true;
+        try{localStorage.setItem("pr_riskmom",JSON.stringify(RISK_MOM_DATA));}catch(e){}
+      }
     }
-    // ── ETF NAZIONALI ──
     if(r2){
       var naz=parseNazionaliCSV(r2);
-      var validNaz=naz?naz.filter(function(e){return e.p&&e.w!=null&&e.m!=null;}):[]; 
+      var validNaz=naz?naz.filter(function(e){return e.p&&e.w!=null&&e.m!=null;}):[];
       if(validNaz.length>=ETF_NAZIONALI.length*0.7&&validNaz.length>0){
         ETF_NAZIONALI.length=0;naz.forEach(function(e){ETF_NAZIONALI.push(e);});
         stNaz=true;
         try{localStorage.setItem("pr_nazionali",JSON.stringify(ETF_NAZIONALI));}catch(e){}
       }
     }
-    // ── INDICATORI MACRO ──
     if(r3){
       var macroUpd=parseIndicatoriCSV(r3);
       var totalInd=Object.keys(INDICATORS).length;
       var updKeys=Object.keys(macroUpd).filter(function(k){return INDICATORS.hasOwnProperty(k);});
-      // dedup: conta solo chiavi INDICATORS uniche aggiornate
-      var updSet=new Set(updKeys);
-      var macroCount=updSet.size;
+      var macroCount=new Set(updKeys).size;
       if(macroCount>0){
+        try{localStorage.setItem("pr_prev_indicators",JSON.stringify(INDICATORS));}catch(e){}
+        Object.keys(INDICATORS).forEach(function(k){PREV_INDICATORS[k]=INDICATORS[k];});
         updKeys.forEach(function(k){INDICATORS[k]=macroUpd[k];});
         try{localStorage.setItem("pr_indicators",JSON.stringify(INDICATORS));}catch(e){}
         stMacro=macroCount>=totalInd*0.5;
@@ -857,7 +925,7 @@ export default function App(){
     }
     const now=new Date();
     var ts=now.getHours()+":"+String(now.getMinutes()).padStart(2,"0");
-    setFetchStatus({sc:stSc,naz:stNaz,macro:stMacro,time:ts});
+    setFetchStatus({sc:stSc,naz:stNaz,macro:stMacro,rm:stRm,time:ts});
     setRefreshing(false);setRenderKey(function(k){return k+1;});
   }
 
@@ -866,24 +934,23 @@ export default function App(){
     const upd=parseMacroText(macroText);
     const n=Object.keys(upd).length;
     if(n===0){setRefreshMsg("Nessun ticker riconosciuto");return;}
+    try{localStorage.setItem("pr_prev_indicators",JSON.stringify(INDICATORS));}catch(e){}
+    Object.keys(INDICATORS).forEach(function(k){PREV_INDICATORS[k]=INDICATORS[k];});
     Object.keys(upd).forEach(function(k){INDICATORS[k]=upd[k];});
     if(!window._macroUpdated)window._macroUpdated={};
     Object.keys(upd).forEach(function(k){window._macroUpdated[k]=true;});
     const SKIP_IND=["tedSpread","euRealYield","deCurve"];
     const allKeys=Object.keys(INDICATORS).filter(function(k){return SKIP_IND.indexOf(k)<0;});
     const targetInd=allKeys.length;
-    const updKeys=allKeys.filter(function(k){return !!window._macroUpdated[k];});
-    const totalUpd=updKeys.length;
+    const totalUpd=allKeys.filter(function(k){return !!window._macroUpdated[k];}).length;
     const missing=allKeys.filter(function(k){return !window._macroUpdated[k];});
     var msg="Incolla: +"+n+" | Aggiornati: "+totalUpd+"/"+targetInd;
     if(missing.length>0)msg+=" | Mancanti: "+missing.join(", ");
-    try{
-      localStorage.setItem("pr_prev_indicators",localStorage.getItem("pr_indicators")||JSON.stringify(INDICATORS));
-      localStorage.setItem("pr_indicators",JSON.stringify(INDICATORS));
-    }catch(e){}
+    try{localStorage.setItem("pr_indicators",JSON.stringify(INDICATORS));}catch(e){}
     setRefreshMsg(msg);
     setRenderKey(function(k){return k+1;});
   }
+
   const allMomScores=calcAllScores();
   const allEtfScores=calcAllEtfScores();
   const momMap=Object.fromEntries(allMomScores.map(s=>[s.id,s]));
@@ -891,18 +958,13 @@ export default function App(){
   const leadMap=Object.fromEntries(SCENARIOS.map(s=>[s.id,calcLeadingScore(s.id)]));
   const finalMap=Object.fromEntries(SCENARIOS.map(s=>{const m=momMap[s.id]?.composite,l=leadMap[s.id];return[s.id,calcFinalScore(m,l,s.id,history)];}));
 
-  // Seed storico hardcoded — non si perde tra versioni
-  const SEED_HISTORY=[
-    {week:15,update:"08/04/2026",scores:{goldilocks:81.6,recession:10.2,stagflation:48.6,reflation:90.2,disinflation:25.5,dollarweakness:70.8,deflation:0.0,dollarweaknessbtc:34.4,debasementbtc:61.8,debasement:100.0}},
-    {week:16,update:"13/04/2026",scores:{goldilocks:81.6,recession:10.2,stagflation:48.6,reflation:90.2,disinflation:25.5,dollarweakness:70.8,deflation:0.0,dollarweaknessbtc:34.4,debasementbtc:61.8,debasement:100.0}},
-    {week:17,update:"20/04/2026",scores:{goldilocks:90.5,recession:12.5,stagflation:45.2,reflation:70.1,disinflation:26.9,dollarweakness:59.5,deflation:0.0,dollarweaknessbtc:35.2,debasementbtc:80.9,debasement:100.0}},
-    {week:18,update:"27/04/2026",scores:{goldilocks:100,recession:9,stagflation:47,reflation:65,disinflation:25,dollarweakness:55,deflation:0,dollarweaknessbtc:34,debasementbtc:78,debasement:87}},
-    {week:19,update:"29/04/2026",scores:{goldilocks:100,recession:0,stagflation:73,reflation:81,disinflation:34,dollarweakness:64,deflation:10,dollarweaknessbtc:23,debasementbtc:46,debasement:55}},
-  ];
+  const riskMomDetail=calcRiskMomDetail();
+  const riskMomScore=riskMomDetail.score;
+  const riskLeadScore=calcRiskLead();
+  const riskOnOff=riskMomScore*0.6+riskLeadScore*0.4;
+  const activeLeadMax=Math.max(0,...SCENARIOS.filter(s=>s.active).map(s=>leadMap[s.id]??0));
 
   useEffect(()=>{
-    // Dipende da renderKey — gira DOPO che il primo useEffect ha ripristinato localStorage
-    // Così i curScores sono calcolati sui dati reali, non su quelli hardcodati
     const curScores=Object.fromEntries(allMomScores.map(s=>[s.id,s.composite]));
     setHistory(function(prevH){
       var base=prevH.length>0?prevH:[...SEED_HISTORY];
@@ -912,18 +974,12 @@ export default function App(){
     });
   },[renderKey]);
 
+  // Δ TREND settimana-su-settimana puro
   function getSmoothedDelta(sid){
     if(history.length<2)return null;
     const s=[...history].sort((a,b)=>a.week-b.week);
     const vals=s.map(h=>h.scores[sid]).filter(v=>v!=null);
     if(vals.length<2)return null;
-    // Se abbiamo 3+ settimane: MA3 recente vs MA3 precedente
-    if(vals.length>=3){
-      const recentMA=vals.slice(-3).reduce((a,b)=>a+b,0)/Math.min(3,vals.slice(-3).length);
-      const prevMA=vals.slice(-6,-3);
-      if(prevMA.length>0) return recentMA - prevMA.reduce((a,b)=>a+b,0)/prevMA.length;
-    }
-    // 2 settimane: ultima - penultima
     return vals[vals.length-1]-vals[vals.length-2];
   }
   function deltaArrow(d){
@@ -932,15 +988,13 @@ export default function App(){
     if(d>=-2)return{a:"-",c:"#F59E0B"};
     return{a:"▼",c:"#EF4444"};
   }
-
   function DeltaPill({d}){
     const{a,c}=deltaArrow(d);
     const base={borderRadius:5,padding:"4px 6px",fontFamily:"monospace",fontSize:14,fontWeight:800,display:"inline-block",whiteSpace:"nowrap",minWidth:52,textAlign:"center"};
     if(d===null) return <span style={{...base,background:"#1e293b",border:"1px solid #374151",color:"#374151"}}>—</span>;
-    return <span style={{...base,background:c+"22",border:"1px solid "+c,color:c}}>
-      {(d>=0?"+":"")+d.toFixed(1)}{a}
-    </span>;
+    return <span style={{...base,background:c+"22",border:"1px solid "+c,color:c}}>{(d>=0?"+":"")+d.toFixed(1)}{a}</span>;
   }
+  function MiniGate({ticker}){return <GatePill ticker={ticker} riskMom={riskMomScore} leadActiveMax={activeLeadMax}/>;}
 
   const sortedByFinal=[...SCENARIOS].sort((a,b)=>(finalMap[b.id]??-999)-(finalMap[a.id]??-999));
 
@@ -951,18 +1005,12 @@ export default function App(){
           <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
-        <div style={{display:"flex",gap:6,alignItems:"center"}}>
-
-        </div>
-      </div>
-      <div style={{display:"flex",gap:6,marginTop:8,flexWrap:"wrap"}}>
-        
       </div>
     </div>
 
     <div style={{display:"flex",gap:2,marginBottom:16,borderBottom:"1px solid #1f2937",flexWrap:"wrap"}}>
       {[{id:"scenarios",l:"📁 Scenari"},{id:"riskonoff",l:"🎯 Risk"},{id:"etfattivi",l:"⭐ ETF Attivi"},{id:"etfnaz",l:"🌍 ETF Nazionali"},{id:"indicatori",l:"📡 Indicatori"},{id:"banche",l:"🏦 Banche Centrali"},{id:"charts",l:"📈 Grafici"},{id:"aggiorna",l:"⚙️ Aggiorna"}].map(t=>(
-        <button key={t.id} onClick={()=>{setTab(t.id);setSel(null);}} style={{background:"none",border:"none",padding:"7px 12px",cursor:"pointer",fontSize:11,fontWeight:600,color:tab===t.id?"#F59E0B":"#6b7280",borderBottom:tab===t.id?"2px solid #F59E0B":"2px solid transparent",marginBottom:-1}}>{t.l}</button>
+        <button key={t.id} onClick={()=>{setTab(t.id);setSel(null);setSelLead(null);setSelRiskBox(null);}} style={{background:"none",border:"none",padding:"7px 12px",cursor:"pointer",fontSize:11,fontWeight:600,color:tab===t.id?"#F59E0B":"#6b7280",borderBottom:tab===t.id?"2px solid #F59E0B":"2px solid transparent",marginBottom:-1}}>{t.l}</button>
       ))}
     </div>
 
@@ -978,40 +1026,29 @@ export default function App(){
           const coreIds=new Set(sortedByCore.slice(0,2).map(x=>x.id));
           return sortedByFinal.map((s,rank)=>{
           const mom=momMap[s.id]?.composite,lead=leadMap[s.id],final=finalMap[s.id];
-          const delta=getSmoothedDelta(s.id);const{a,c}=deltaArrow(delta);
+          const delta=getSmoothedDelta(s.id);
           const fcol=scoreColor(final);
           const isCore=coreIds.has(s.id);
           return <div key={s.id} onClick={()=>setSel(s.id)} style={{background:isCore?"#0f172a":"#080812",border:"2px solid "+(isCore?s.color:"#1f2937"),borderRadius:12,padding:14,cursor:"pointer",boxShadow:isCore?"0 0 10px "+s.color+"55":"none"}}>
-            {/* Top row — rank, name, active badge */}
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
                 <div style={{background:"#1e293b",color:"#6b7280",fontSize:8,fontWeight:800,padding:"2px 7px",borderRadius:4}}>#{rank+1}</div>
                 <div style={{fontSize:13,color:s.color,letterSpacing:1,fontWeight:800}}>{s.name}</div>
               </div>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                
-                <div style={{fontSize:11,color:"#4b5563"}}>›</div>
-              </div>
+              <div style={{fontSize:11,color:"#4b5563"}}>›</div>
             </div>
-            {/* Desc */}
             <div style={{fontSize:10,color:"#6b7280",marginBottom:10}}>{s.desc}</div>
-            {/* Scores row */}
             <div style={{display:"flex",gap:0,marginBottom:10}}>
               {[{label:"MOMENTUM",v:mom},{label:"Δ TREND",v:null,delta:true},{label:"LEADING",v:lead},{label:"FINAL SCORE",v:final,hi:true}].map(({label,v,hi,delta:isDelta},i)=>(
                 <div key={i} style={{flex:1,textAlign:"center",borderRight:i<3?"1px solid #1e293b":"none",paddingRight:4,paddingLeft:i>0?4:0}}>
                   <div style={{fontSize:7,color:hi?"#F59E0B":"#4b5563",fontWeight:hi?700:400,marginBottom:4,letterSpacing:1}}>{label}</div>
-                  {isDelta
-                    ? <DeltaPill d={delta}/>
-                    : <ScorePill v={v} size="lg"/>
-                  }
+                  {isDelta?<DeltaPill d={delta}/>:<ScorePill v={v} size="lg"/>}
                 </div>
               ))}
             </div>
-            {/* Score bar */}
             <div style={{height:4,background:"#1e293b",borderRadius:2,overflow:"hidden",marginBottom:10}}>
               <div style={{height:"100%",width:(final??0)+"%",background:fcol,borderRadius:2,transition:"width 0.5s"}}/>
             </div>
-            {/* ETF chips */}
             <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
               {s.etfs.map(e=> <span key={e.t} style={{background:"#1e293b",borderRadius:4,padding:"2px 7px",fontSize:9,fontWeight:700,color:"#64748b",fontFamily:"monospace"}}>{e.t}</span>)}
             </div>
@@ -1028,7 +1065,7 @@ export default function App(){
         <div style={{fontSize:10,color:"#6b7280",marginBottom:8}}>{sc.desc}</div>
         <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:8,flexWrap:"wrap"}}>
           {(()=>{
-            const d=getSmoothedDelta(sc.id);const{a,c}=deltaArrow(d);
+            const d=getSmoothedDelta(sc.id);
             const items=[
               {label:"MOM",    v:momMap[sc.id]?.composite, hi:false, isDelta:false},
               {label:"Δ TREND",v:null,                     hi:false, isDelta:true},
@@ -1038,10 +1075,7 @@ export default function App(){
             return items.map(({label,v,hi,isDelta})=>(
               <div key={label} style={{textAlign:"center"}}>
                 <div style={{fontSize:8,color:hi?"#F59E0B":"#4b5563",marginBottom:3,fontWeight:hi?700:400}}>{label}</div>
-                {isDelta
-                  ? <DeltaPill d={d}/>
-                  : <ScorePill v={v} size="lg"/>
-                }
+                {isDelta?<DeltaPill d={d}/>:<ScorePill v={v} size="lg"/>}
               </div>
             ));
           })()}
@@ -1066,7 +1100,7 @@ export default function App(){
             <tr style={{borderBottom:"1px solid #1f2937"}}>
               <th style={{textAlign:"left",padding:"5px 8px",fontSize:9,color:"#4b5563"}}>TICKER</th>
               <th style={{textAlign:"left",padding:"5px 8px",fontSize:9,color:"#4b5563"}}>NOME</th>
-              <th style={{textAlign:"center",padding:"5px 6px",fontSize:9,color:"#F59E0B"}}>MOM</th>
+              <th style={{textAlign:"center",padding:"5px 6px",fontSize:9,color:"#F59E0B"}}>MOM / GATE</th>
               <th style={{textAlign:"right",padding:"5px 6px",fontSize:9,color:"#4b5563"}}>PREZZO</th>
               {PERS.map(p=> <th key={p.k} style={{textAlign:"right",padding:"5px 4px",fontSize:9,color:per===p.k?"#F59E0B":"#4b5563",fontWeight:per===p.k?700:500}}>{p.l}</th>)}
             </tr>
@@ -1082,11 +1116,11 @@ export default function App(){
                       <div style={{fontSize:6,color:"#475569"}}>AVG.MOM</div>
                       <AvgMomPill v={calcAvgMom(e)}/>
                     </div>
-                    <span style={{fontSize:10,color:scoreColor(etfMap[e.t]?.composite),fontWeight:700}}>{(etfMap[e.t]?.composite??0)>=70?"▲":(etfMap[e.t]?.composite??0)>=40?"→":"▼"}</span>
                     <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
                       <div style={{fontSize:6,color:"#475569"}}>SCORE</div>
                       <ScorePill v={etfMap[e.t]?.composite}/>
                     </div>
+                    <MiniGate ticker={e.t}/>
                   </div>
                 </td>
                 <td style={{padding:"9px 6px",textAlign:"right",fontFamily:"monospace",fontSize:10,color:"#e2e8f0"}}>${e.p.toFixed(2)}</td>
@@ -1103,145 +1137,22 @@ export default function App(){
     </div>}
 
     {tab==="riskonoff"&&(()=>{
-      // ── RISK SCORE 0-100 dai 62 indicatori ───────────────────────
-      // >50 = risk on, <50 = risk off, 50 = neutrale
-      const IND=INDICATORS;
-      function rs(v,riskOnGood,riskOnBad){
-        if(v==null||isNaN(v))return 50;
-        if(riskOnGood>riskOnBad){if(v>=riskOnGood)return 100;if(v<=riskOnBad)return 0;return((v-riskOnBad)/(riskOnGood-riskOnBad))*100;}
-        if(v<=riskOnGood)return 100;if(v>=riskOnBad)return 0;return((riskOnBad-v)/(riskOnBad-riskOnGood))*100;
-      }
-      // DE curve calcolata
-      const deCurve=(IND.de02y!=null&&IND.us10y!=null)?2.937-IND.de02y:null;
-      const scores=[
-        // CICLO ECONOMICO — risk on quando alto
-        {s:rs(IND.ism,55,44),          w:4},
-        {s:rs(IND.ismNewOrders,55,44), w:4},
-        {s:rs(IND.ismEmployment,53,44),w:3},
-        {s:rs(IND.lei,101.5,98),       w:4},
-        {s:rs(IND.cfnai,0.2,-0.7),     w:2},
-        {s:rs(IND.ifo,102,85),         w:2},
-        {s:rs(IND.retailSales,5,1),    w:2},
-        {s:rs(IND.housingStarts,1500,1100),w:2},
-        {s:rs(IND.nfp,250,80),         w:3},
-        {s:rs(IND.jobless,180,380),    w:3},  // inverso: basso=risk on
-        {s:rs(IND.bdi,2500,800),       w:2},
-        {s:rs(IND.copperGold,0.003,0.001),w:3},
-        // VOLATILITÀ E SENTIMENT — risk on quando basso
-        {s:rs(IND.vix,13,35),          w:7},  // inverso
-        {s:rs(IND.move,70,120),        w:3},  // inverso
-        {s:rs(IND.pcc,0.7,1.2),        w:2},  // inverso
-        {s:rs(IND.pcce,0.6,1.1),       w:2},  // inverso
-        // CREDITO — risk on quando spread basso
-        {s:rs(IND.hySpread,2.5,7.0),   w:6},  // inverso
-        {s:rs(IND.igSpread,0.6,2.0),   w:3},  // inverso
-        {s:rs(IND.emSpread,2.5,6.0),   w:2},  // inverso
-        {s:rs(IND.tedSpread,0.1,0.5),  w:2},  // inverso
-        // CURVE — piatte/negative = risk off
-        {s:rs(IND.yieldCurve,1.5,-0.5),w:4},
-        {s:rs(deCurve,1.5,-0.3),       w:3},
-        // TASSI — risk on quando bassi
-        {s:rs(IND.realYield,-0.5,2.5), w:3},  // inverso
-        {s:rs(IND.us2y,2.0,5.0),       w:2},  // inverso
-        {s:rs(IND.de02y,1.5,4.0),      w:2},  // inverso
-        {s:rs(IND.euribor,1.5,4.0),    w:2},  // inverso
-        {s:rs(IND.spread2y,0.5,2.0),   w:1},
-        {s:rs(IND.spread10y,0.5,2.0),  w:1},
-        // INFLAZIONE — risk off quando accelera
-        {s:rs(IND.ppiMom,0.0,0.5),     w:3},  // inverso
-        {s:rs(IND.ppiCoreMom,0.0,0.4), w:2},
-        {s:rs(IND.cpiMom,0.1,0.4),     w:3},
-        {s:rs(IND.cpiCoreMom,0.1,0.35),w:3},
-        {s:rs(IND.pceMom,0.1,0.35),    w:3},
-        {s:rs(IND.ppi,1.5,5.0),        w:2},
-        {s:rs(IND.cpi,2.0,4.5),        w:2},
-        {s:rs(IND.pce,2.0,4.0),        w:2},
-        {s:rs(IND.breakeven,2.0,3.0),  w:2},
-        {s:rs(IND.ismPricesPaid,40,90),w:2},  // inverso
-        // LIQUIDITÀ E DOLLARO
-        {s:rs(IND.m2Dxy,225,200),      w:3},
-        {s:rs(IND.dxy,90,110),         w:3},  // inverso: DXY alto = risk off
-        // COMMODITY
-        {s:rs(IND.oil,50,130),         w:1},  // inverso
-        {s:rs(IND.crb,260,450),        w:1},  // inverso
-        // EUROPA
-        {s:rs(IND.euCpiMom,0.1,0.4),   w:1},
-        {s:rs(IND.euPpiMom,-0.5,0.5),  w:1},
-        // BREADTH E SENTIMENT (Fear & Greed components)
-        {s:(IND.athi!=null&&IND.atlo!=null&&(IND.athi+IND.atlo)>0)?rs(IND.athi/(IND.athi+IND.atlo)*100,70,30):50, w:5},  // breadth: alto = risk on
-        {s:rs(IND.trin,0.5,1.5),       w:3},  // inverso: basso = risk on
-        {s:rs(IND.spx,8000,5000),      w:5},  // SPX: alto = risk on
-        // ── NUOVI ─────────────────────────────────────────
-        {s:rs(IND.us10y,2.0,4.0,5.5)*-1+100,              w:2},  // US10Y alto = risk off
-        {s:IND.vvixVix!=null?rs(IND.vvixVix,3,7)*-1+100:50, w:2}, // VVIX/VIX alto = risk off
-        {s:IND.dtb3!=null?rs(IND.dtb3,2.0,3.5,5.5)*-1+100:50, w:1}, // DTB3 alto = risk off
-        {s:IND.sofr!=null?rs(IND.sofr,2.0,3.5,5.5)*-1+100:50, w:1}, // SOFR alto = risk off
-        {s:IND.euCpiCoreMom!=null?rs(IND.euCpiCoreMom,0,0.17,0.4)*-1+100:50, w:1}, // EU CPI Core MoM
-        {s:IND.euPpiYoy!=null?rs(IND.euPpiYoy,-2,1.5,4.0)*-1+100:50, w:1},  // EU PPI YoY
-        {s:IND.btpBund!=null?rs(IND.btpBund,0.5,0.9,2.0)*-1+100:50, w:2},   // BTP-Bund alto = stress
-        {s:IND.euur!=null?rs(IND.euur,5,7,12)*-1+100:50,  w:1},              // disoccupazione EU alta = risk off
-        {s:IND.eujvr!=null?rs(IND.eujvr,0.5,1.5,3.5)*-1+100:50, w:1},       // job vacancies EU alto = pressione salariale
-        {s:IND.de10y!=null?rs(IND.de10y,1.0,2.5,4.0)*-1+100:50, w:1},       // DE10Y alto = BCE hawkish = risk off
-        {s:IND.sx5e!=null?rs(IND.sx5e,3500,5000,6500):50, w:2},              // SX5E alto = risk on EU
-        {s:IND.eursyy!=null?rs(IND.eursyy,0,1.5,4.0):50, w:1},              // EU retail sales alto = risk on
-        {s:IND.deppimm!=null?rs(IND.deppimm,-0.5,0.1,0.5)*-1+100:50, w:1},  // DE PPI MoM alto = risk off
-        {s:IND.deppiyy!=null?rs(IND.deppiyy,-2,1.0,4.0)*-1+100:50, w:1},    // DE PPI YoY alto = risk off
-      ];
-      const totalW=scores.reduce((a,b)=>a+b.w,0);
-      const rawScore=scores.reduce((a,b)=>a+b.s*b.w,0)/totalW;
-      const riskScore=Math.round(rawScore);
-
-      function riskLabel(s){
-        if(s>=75)return"RISK ON FORTE";
-        if(s>=60)return"RISK ON";
-        if(s>=45)return"NEUTRALE";
-        if(s>=30)return"RISK OFF";
-        return"RISK OFF FORTE";
-      }
-      function riskColor(s){
-        if(s>=70)return"#10B981";
-        if(s>=55)return"#84CC16";
-        if(s>=45)return"#F59E0B";
-        if(s>=30)return"#F97316";
-        return"#EF4444";
-      }
-
-      // Allocazione dinamica basata su score + scenari attivi
       const activeScenarios=SCENARIOS.filter(s=>s.active).map(s=>s.id);
-      const isStagflation=activeScenarios.includes("stagflation");
-      const isDebasement=activeScenarios.includes("debasement");
-      const isRecession=activeScenarios.includes("recession");
-      const isGoldilocks=activeScenarios.includes("goldilocks");
+      const alloc=calcAllocation(riskOnOff,activeScenarios);
+      const pRisk=alloc.pRisk,pDef=alloc.pDef,pCash=alloc.pCash;
 
-      let pRisk,pDef,pCash;
-      if(riskScore>=70){pRisk=65;pDef=25;pCash=10;}
-      else if(riskScore>=55){pRisk=55;pDef=30;pCash=15;}
-      else if(riskScore>=45){pRisk=45;pDef=35;pCash=20;}
-      else if(riskScore>=30){pRisk=30;pDef=45;pCash=25;}
-      else{pRisk=20;pDef=50;pCash=30;}
-      // Aggiusta per scenario attivo
-      if(isStagflation||isDebasement){pDef+=10;pRisk-=10;}
-      if(isRecession){pCash+=10;pRisk-=10;}
-      if(isGoldilocks){pRisk+=10;pDef-=10;}
+      function riskLabel(s){if(s>=75)return"RISK ON FORTE";if(s>=60)return"RISK ON";if(s>=45)return"NEUTRALE";if(s>=30)return"RISK OFF";return"RISK OFF FORTE";}
+      function riskColor(s){if(s>=70)return"#10B981";if(s>=55)return"#84CC16";if(s>=45)return"#F59E0B";if(s>=30)return"#F97316";return"#EF4444";}
 
-      // ETF classificati per scenario
       const allEtfs=[];const seen2=new Set();
       SCENARIOS.forEach(s=>s.etfs.forEach(e=>{if(!seen2.has(e.t)){seen2.add(e.t);allEtfs.push({...e,scenarioId:s.id,scenarioColor:s.color});}}));
-
       const RISK_IDS=new Set(["QQQ","XLK","XLY","SMH","IWM","VTI","IXUS","XLI","XLF","EEM","IBIT","SPY","URTH","SX5E","VTV"]);
       const DEF_IDS=new Set(["GLD","TIP","XLU","XLP","TLT","IEF","LQD","DBC","XLE","XME","COPX","FXF"]);
       const CASH_IDS=new Set(["SHY","BIL"]);
+      const riskEtfs=allEtfs.filter(e=>!CASH_IDS.has(e.t)&&RISK_IDS.has(e.t)).sort((a,b)=>(etfMap[b.t]?.composite??0)-(etfMap[a.t]?.composite??0));
+      const defEtfs=allEtfs.filter(e=>!CASH_IDS.has(e.t)&&!RISK_IDS.has(e.t)).sort((a,b)=>(etfMap[b.t]?.composite??0)-(etfMap[a.t]?.composite??0));
+      const cashEtfs=allEtfs.filter(e=>CASH_IDS.has(e.t)).sort((a,b)=>(etfMap[b.t]?.composite??0)-(etfMap[a.t]?.composite??0));
 
-      const riskEtfs=allEtfs.filter(e=>!CASH_IDS.has(e.t)&&RISK_IDS.has(e.t))
-        .sort((a,b)=>(etfMap[b.t]?.composite??0)-(etfMap[a.t]?.composite??0));
-
-      const defEtfs=allEtfs.filter(e=>!CASH_IDS.has(e.t)&&!RISK_IDS.has(e.t))
-        .sort((a,b)=>(etfMap[b.t]?.composite??0)-(etfMap[a.t]?.composite??0));
-
-      const cashEtfs=allEtfs.filter(e=>CASH_IDS.has(e.t))
-        .sort((a,b)=>(etfMap[b.t]?.composite??0)-(etfMap[a.t]?.composite??0));
-
-      // Detail page
       if(selRiskBox){
         const boxEtfs=selRiskBox==="risk"?riskEtfs:selRiskBox==="defensive"?defEtfs:cashEtfs;
         const boxLabel=selRiskBox==="risk"?"⚡ Risk Assets":selRiskBox==="defensive"?"🛡️ Difensivi":"💵 Cash";
@@ -1276,6 +1187,7 @@ export default function App(){
                       <div style={{fontSize:7,color:"#475569",letterSpacing:1}}>SCORE</div>
                       <ScorePill v={score} size="lg"/>
                     </div>
+                    <MiniGate ticker={e.t}/>
                   </div>
                 </div>
                 <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
@@ -1294,39 +1206,52 @@ export default function App(){
         </div>;
       }
 
-      // Main Risk On/Off view
-      const col=riskColor(riskScore);
-      const pct=riskScore/100;
-      return <div>
-        <div style={{fontSize:8,color:"#6b7280",letterSpacing:2,marginBottom:16}}>RISK ON / RISK OFF — score da 62 indicatori macro · </div>
+      const momCol=riskColor(riskMomScore),leadCol=riskColor(riskLeadScore),offCol=riskColor(riskOnOff);
+      function MiniBox({title,sub,score,col}){
+        return <div style={{flex:1,background:"#0f172a",border:"1px solid "+col+"66",borderRadius:12,padding:14}}>
+          <div style={{fontSize:12,fontWeight:800,color:"#f8fafc"}}>{title}</div>
+          <div style={{fontSize:9,color:"#6b7280",marginBottom:10,minHeight:24}}>{sub}</div>
+          <div style={{display:"flex",alignItems:"baseline",justifyContent:"center",gap:4,marginBottom:8}}>
+            <span style={{fontFamily:"monospace",fontSize:32,fontWeight:900,color:col}}>{Math.round(score)}</span>
+            <span style={{fontSize:12,color:"#6b7280"}}>/100</span>
+          </div>
+          <div style={{height:8,borderRadius:5,background:"linear-gradient(to right,#EF4444,#F59E0B,#10B981)",position:"relative"}}>
+            <div style={{position:"absolute",top:-3,left:"calc("+Math.max(0,Math.min(100,score))+"% - 6px)",width:12,height:14,background:"#fff",borderRadius:3,border:"2px solid #0f172a"}}/>
+          </div>
+          <div style={{textAlign:"center",fontSize:9,fontWeight:700,color:col,marginTop:8,letterSpacing:1}}>{riskLabel(score)}</div>
+        </div>;
+      }
 
-        {/* Gauge barra orizzontale */}
+      return <div>
+        <div style={{fontSize:8,color:"#6b7280",letterSpacing:2,marginBottom:14}}>RISK ON / RISK OFF</div>
+
+        {/* Risk Mom (sx) + Risk Lead (dx) */}
+        <div style={{display:"flex",gap:12,marginBottom:12}}>
+          <MiniBox title="Risk Mom" sub={riskMomDetail.morning?"🌅 Lettura mattina (proxy settimanale) — prezzi intraday dalle 15:30":"🇺🇸 Lettura USA (mercato aperto) — 70% daily + 30% settimanale"} score={riskMomScore} col={momCol}/>
+          <MiniBox title="Risk Lead" sub="Score macro da 62 indicatori (leading, lento)" score={riskLeadScore} col={leadCol}/>
+        </div>
+
+        {/* Risk On/Off composito a tutta larghezza */}
         <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:14,padding:20,marginBottom:12}}>
           <div style={{fontSize:13,fontWeight:800,color:"#f8fafc",marginBottom:4}}>Risk On / Risk Off</div>
-          <div style={{fontSize:10,color:"#6b7280",marginBottom:20}}>Score composito da 62 indicatori macro con pesi differenziati</div>
-
-          {/* Barra gradiente */}
+          <div style={{fontSize:10,color:"#6b7280",marginBottom:20}}>Media ponderata: 60% Risk Mom + 40% Risk Lead</div>
           <div style={{position:"relative",marginBottom:8}}>
             <div style={{height:14,borderRadius:7,background:"linear-gradient(to right, #EF4444, #F97316, #F59E0B, #84CC16, #10B981)",position:"relative"}}>
-              {/* Indicatore */}
-              <div style={{position:"absolute",top:-6,left:`calc(${riskScore}% - 8px)`,width:16,height:26,background:"#fff",borderRadius:3,boxShadow:"0 0 8px rgba(255,255,255,0.6)",border:"2px solid #0f172a"}}/>
+              <div style={{position:"absolute",top:-6,left:"calc("+Math.max(0,Math.min(100,riskOnOff))+"% - 8px)",width:16,height:26,background:"#fff",borderRadius:3,boxShadow:"0 0 8px rgba(255,255,255,0.6)",border:"2px solid #0f172a"}}/>
             </div>
-            {/* Labels */}
             <div style={{display:"flex",justifyContent:"space-between",marginTop:6}}>
               <div style={{fontSize:8,color:"#EF4444",fontWeight:600}}>Ext. Risk Off</div>
               <div style={{fontSize:8,color:"#F59E0B",fontWeight:600}}>Neutral</div>
               <div style={{fontSize:8,color:"#10B981",fontWeight:600}}>Ext. Risk On</div>
             </div>
           </div>
-
-          {/* Badge score */}
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12,marginTop:16,marginBottom:8}}>
-            <div style={{background:col+"22",border:"1px solid "+col,borderRadius:8,padding:"6px 16px",fontSize:13,fontWeight:800,color:col,letterSpacing:1}}>{riskLabel(riskScore)}</div>
-            <div style={{fontFamily:"monospace",fontSize:36,fontWeight:900,color:col}}>{riskScore}<span style={{fontSize:14,color:"#6b7280"}}>%</span></div>
+            <div style={{background:offCol+"22",border:"1px solid "+offCol,borderRadius:8,padding:"6px 16px",fontSize:13,fontWeight:800,color:offCol,letterSpacing:1}}>{riskLabel(riskOnOff)}</div>
+            <div style={{fontFamily:"monospace",fontSize:36,fontWeight:900,color:offCol}}>{Math.round(riskOnOff)}<span style={{fontSize:14,color:"#6b7280"}}>%</span></div>
           </div>
         </div>
 
-        {/* Tre caselle allocazione */}
+        {/* Ripartizione continua */}
         <div style={{display:"flex",gap:8,marginBottom:4}}>
           {[
             {key:"defensive",label:"Difensivo",pct:pDef,etfs:defEtfs,col:"#6366F1"},
@@ -1340,7 +1265,7 @@ export default function App(){
             </div>
           ))}
         </div>
-        <div style={{fontSize:8,color:"#374151",textAlign:"center",marginTop:6}}>Scenario attivo: {activeScenarios.join(" + ").toUpperCase() || "nessuno"} · Score {riskScore}/100</div>
+        <div style={{fontSize:8,color:"#374151",textAlign:"center",marginTop:6}}>Scenario attivo: {activeScenarios.join(" + ").toUpperCase()||"nessuno"} · Risk On/Off {Math.round(riskOnOff)}/100</div>
       </div>;
     })()}
 
@@ -1348,23 +1273,15 @@ export default function App(){
       {(()=>{
         const seen=new Set(),allU=[];
         SCENARIOS.forEach(s=>s.etfs.forEach(e=>{if(!seen.has(e.t)){seen.add(e.t);allU.push(e);}}));
-
-        // Top 2 scenari per media(3M+6M)
         const top2=[...SCENARIOS].sort((a,b)=>{
           const aS=(a.avg.s??-999)*0.70+(a.avg.q??-999)*0.30;
           const bS=(b.avg.s??-999)*0.70+(b.avg.q??-999)*0.30;
           return bS-aS;
         }).slice(0,2);
-
         const coreTickers=new Set();
         top2.forEach(s=>s.etfs.forEach(e=>coreTickers.add(e.t)));
-
-        const coreEtfs=allU
-          .filter(e=>coreTickers.has(e.t))
-          .sort((a,b)=>(etfMap[b.t]?.composite??0)-(etfMap[a.t]?.composite??0));
-
-        const satelliteEtfs=allU
-          .sort((a,b)=>(etfMap[b.t]?.composite??-999)-(etfMap[a.t]?.composite??-999));
+        const coreEtfs=allU.filter(e=>coreTickers.has(e.t)).sort((a,b)=>(etfMap[b.t]?.composite??0)-(etfMap[a.t]?.composite??0));
+        const satelliteEtfs=allU.sort((a,b)=>(etfMap[b.t]?.composite??-999)-(etfMap[a.t]?.composite??-999));
 
         function EtfCard({e,i,border}){
           const score=etfMap[e.t]?.composite;
@@ -1389,6 +1306,7 @@ export default function App(){
                   <div style={{fontSize:7,color:"#475569",letterSpacing:1}}>SCORE</div>
                   <ScorePill v={score} size="lg"/>
                 </div>
+                <MiniGate ticker={e.t}/>
               </div>
             </div>
             <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
@@ -1413,7 +1331,7 @@ export default function App(){
               </div>
             </div>
             {coreEtfs.length===0
-              ?<div style={{padding:16,textAlign:"center",fontSize:11,color:"#6b7280"}}>Nessun ETF con momentum &gt;60</div>
+              ?<div style={{padding:16,textAlign:"center",fontSize:11,color:"#6b7280"}}>Nessun ETF</div>
               :<div style={{display:"flex",flexDirection:"column",gap:8}}>
                 {coreEtfs.map((e,i)=><EtfCard key={e.t} e={e} i={i} border="rgba(245,158,11,0.4)"/>)}
               </div>
@@ -1422,10 +1340,10 @@ export default function App(){
           <div>
             <div style={{background:"#0f172a",border:"1px solid #1e293b",borderRadius:8,padding:"8px 12px",marginBottom:8}}>
               <div style={{fontSize:11,fontWeight:800,color:"#818cf8",marginBottom:2}}>SATELLITE</div>
-              <div style={{fontSize:8,color:"#6b7280"}}>Tutti gli scenari · ordinati per media(1W+1M)/2</div>
+              <div style={{fontSize:8,color:"#6b7280"}}>Tutti gli scenari · ordinati per score</div>
             </div>
             {satelliteEtfs.length===0
-              ?<div style={{padding:16,textAlign:"center",fontSize:11,color:"#6b7280"}}>Nessun ETF con momentum &gt;70</div>
+              ?<div style={{padding:16,textAlign:"center",fontSize:11,color:"#6b7280"}}>Nessun ETF</div>
               :<div style={{display:"flex",flexDirection:"column",gap:8}}>
                 {satelliteEtfs.map((e,i)=><EtfCard key={e.t} e={e} i={i} border="rgba(129,140,248,0.4)"/>)}
               </div>
@@ -1435,13 +1353,11 @@ export default function App(){
       })()}
     </div>}
 
-
     {tab==="etfnaz"&&<div>
       {(()=>{
-        // Calcola momentum score identico a calcAllEtfScores
         const nazRaw=ETF_NAZIONALI.map(e=>{
           let s=0,tw=0;
-          const W={w:0.25,m:0.40,q:0.20,s:0.10,y:0.05};
+          const W={w:0.45,m:0.35,q:0.12,s:0.05,y:0.03};
           Object.entries(W).forEach(([k,w])=>{if(e[k]!=null){s+=e[k]*w;tw+=w;}});
           return{...e,raw:tw>0?s/tw:null};
         });
@@ -1478,6 +1394,7 @@ export default function App(){
                   <div style={{fontSize:7,color:"#475569",letterSpacing:1}}>SCORE</div>
                   <ScorePill v={e.score} size="lg"/>
                 </div>
+                <MiniGate ticker={e.t}/>
               </div>
             </div>
             <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
@@ -1494,7 +1411,7 @@ export default function App(){
         }
 
         return <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          <div style={{fontSize:8,color:"#6b7280",letterSpacing:1,marginBottom:4}}>ETF NAZIONALI — 26 paesi · ordinati per momentum ↓ · </div>
+          <div style={{fontSize:8,color:"#6b7280",letterSpacing:1,marginBottom:4}}>ETF NAZIONALI — 26 paesi · ordinati per momentum ↓</div>
           {nazWithScore.map((e,i)=><NazCard key={e.t} e={e} i={i}/>)}
         </div>;
       })()}
@@ -1796,6 +1713,8 @@ export default function App(){
         const c=hawkColor(ind.score);
         const scoreVal=Math.max(2,ind.score||0);
         const arrow=arrowEl(ind.id,ind.goodDir);
+        const meta=IND_META[ind.id];
+        const desc=meta?meta.desc:(ind.id==="dtb3sofr"?"Spread DTB3−SOFR — tensione di liquidità a breve termine.\n🟢 ~0 = funding normale\n🔴 ampio = stress di liquidità USA":"");
         return <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:8,padding:"10px 12px"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
             <div style={{fontSize:10,color:"#6b7280"}}>{ind.label}</div>
@@ -1807,7 +1726,7 @@ export default function App(){
           <div style={{height:4,background:"#1e293b",borderRadius:2,overflow:"hidden",marginBottom:4}}>
             <div style={{height:"100%",width:scoreVal+"%",background:"linear-gradient(to right,#10B981,#F59E0B,#EF4444)",borderRadius:2}}/>
           </div>
-          <div style={{fontSize:9,color:"#4b5563"}}>{TRENDS[ind.id]?.note||""}</div>
+          {desc?<div style={{fontSize:9,color:"#6b7280",lineHeight:1.6,whiteSpace:"pre-line",marginTop:4}}>{desc}</div>:null}
         </div>;
       }
 
@@ -2032,6 +1951,7 @@ export default function App(){
             {key:"sc",   label:"Scenari Macro"},
             {key:"naz",  label:"ETF Nazionali"},
             {key:"macro",label:"Indicatori Macro"},
+            {key:"rm",   label:"Risk Mom (HYG/CPER/USO)"},
           ].map(function(row){
             var st=fetchStatus[row.key];
             var icon=refreshing?"⏳":st===true?"✅":st===false?"❌":"⏳";
@@ -2051,71 +1971,71 @@ export default function App(){
 
   </div>;
 }const TRENDS = {
-  yieldCurve:  {dir:"↑", note:"0.52% da 0.51% — curva lievemente positiva"},
-  vix:         {dir:"↓", note:"18.45 da 18.68 — stabile, risk-on regge"},
-  move:        {dir:"↑", note:"68.68 da 67.70 — bond vol in salita, attenzione"},
-  ism:         {dir:"-", note:"52.7 — espansione moderata"},
-  cpi:         {dir:"-", note:"2.6% YoY"},
-  ppi:         {dir:"-", note:"4.0% YoY — pressione a monte"},
-  pce:         {dir:"-", note:"3.0% YoY — sopra target Fed"},
-  tedSpread:   {dir:"-", note:"0.09% — stabile"},
-  crb:         {dir:"↑", note:"394.49 da 381.84 — accelerazione commodity FORTE"},
-  bdi:         {dir:"↑", note:"2677 da 2673 — stabile su livelli alti"},
-  ifo:         {dir:"-", note:"83.3 — sotto 85 = zona recessione"},
-  euCpi:       {dir:"-", note:"2.6% YoY — stagnante"},
-  jobless:     {dir:"-", note:"207K — mercato lavoro stabile"},
-  lei:         {dir:"-", note:"100.89 — sopra ref 100.85"},
-  cfnai:       {dir:"-", note:"-0.20 — sotto trend"},
-  igSpread:    {dir:"-", note:"0.81% — stabile"},
-  hySpread:    {dir:"↓", note:"2.85% da 2.84% — risk-on regge"},
-  emSpread:    {dir:"-", note:"3.27%"},
-  pcc:         {dir:"↑", note:"0.876 da 0.763 — più hedging, risk-off interno"},
-  pcce:        {dir:"↑", note:"0.790 da 0.608 — paura in aumento"},
-  realYield:   {dir:"↓", note:"1.91% da 1.92% — lieve miglioramento per oro"},
-  breakeven:   {dir:"↑", note:"2.63% da 2.58% — aspettative inflazione salgono"},
-  us2y:        {dir:"↑", note:"3.932% da 3.787% — hawkish Fed prezzato"},
-  us10y:       {dir:"↑", note:"4.410% da 4.306% — tassi lunghi accelerano"},
-  dxy:         {dir:"↑", note:"98.992 da 98.646 — dollaro si rafforza"},
-  oil:         {dir:"↑", note:"$107.10 da $95.23 (+12.4%) — SHOCK energetico stagflazionistico"},
-  euribor:     {dir:"↑", note:"2.450% da 2.355% — BCE hawkish confermata"},
-  copperGold:  {dir:"-", note:"0.0015"},
-  ismNewOrders:{dir:"-", note:"53.5"},
-  ismEmployment:{dir:"-",note:"48.7"},
-  ismPricesPaid:{dir:"-",note:"78.3 — massimo da giu 2022"},
-  retailSales: {dir:"-", note:"3.97%"},
-  housingStarts:{dir:"↑", note:"1500K da 1490K — lieve miglioramento"},
-  m2Dxy:       {dir:"↓", note:"229.19 da 229.78 — liquidità reale stabile"},
-  nfp:         {dir:"-", note:"178K"},
-  ppiMom:      {dir:"-", note:"0.5% MoM"},
-  ppiCoreMom:  {dir:"-", note:"0.4% MoM"},
-  cpiMom:      {dir:"-", note:"0.9% MoM"},
-  cpiCoreMom:  {dir:"-", note:"0.3% MoM"},
-  euCpiMom:    {dir:"-", note:"1.3% MoM"},
-  euCpiCoreMom:{dir:"-", note:"0.8% MoM"},
-  euPpiMom:    {dir:"-", note:"-0.7% MoM"},
-  euPpiYoy:    {dir:"-", note:"-3.0% YoY"},
-  de02y:       {dir:"↑", note:"2.747% da 2.553% — BCE hawkish forte"},
-  spread2y:    {dir:"↓", note:"1.182% da 1.231% — si RESTRINGE da lug 2025, BCE più hawkish della Fed, trade dollaro si indebolisce"},
-  spread10y:   {dir:"↓", note:"1.297% da 1.305% — lieve restringimento"},
-  pceMom:      {dir:"-", note:"0.4% MoM"},
-  athi:        {dir:"↓", note:"86K da 226K — crollo nuovi massimi, breadth deteriora FORTE"},
-  atlo:        {dir:"↑", note:"240K da 174K — nuovi minimi in forte aumento, risk-off"},
-  trin:        {dir:"↓", note:"0.650 da 1.460 — sceso sotto 1, segnale bullish breadth"},
-  spx:         {dir:"↓", note:"7123.64 da 7137.64 — lieve correzione"},
-  btpBund:     {dir:"↑", note:"84.5bp da 79.5bp — spread BTP-Bund si allarga"},
-  vvixVix:     {dir:"↑", note:"5.19 da 5.09 — volatilità della volatilità in salita"},
-  dtb3:        {dir:"↓", note:"3.59% da 3.61% — T-Bill 3M in lieve calo"},
-  sofr:        {dir:"-", note:"3.66% — Secured Overnight Financing Rate, Fed Funds proxy"},
-  euur:        {dir:"-", note:"6.2% — Disoccupazione EU"},
-  eujvr:       {dir:"-", note:"2.2% — Job Vacancy Rate EU, dato trimestrale"},
-  de10y:       {dir:"↑", note:"3.042% da 2.97% — Bund 10Y in salita"},
-  eurusd:      {dir:"-", note:"1.172 — EUR/USD, proxy forza relativa BCE vs Fed"},
-  sx5e:        {dir:"↓", note:"5881 da 5885 — Euro Stoxx 50 lieve calo"},
-  eursyy:      {dir:"-", note:"1.7% — Retail Sales EU YoY"},
-  deppimm:     {dir:"↑", note:"2.5% da -0.5% — DE PPI MoM accelera forte"},
-  deppiyy:     {dir:"↑", note:"-0.2% da -3.3% — DE PPI YoY in forte rimbalzo"},
-  deCurve:     {dir:"↑", note:"0.397% da 0.073% — curva tedesca DE10Y-DE02Y in irripidimento"},
-  euRealYield: {dir:"↑", note:"0.042% — Real Yield EU (DE10Y-euCpi) in risalita"},
+  yieldCurve:  {dir:"↑", note:""},
+  vix:         {dir:"↓", note:""},
+  move:        {dir:"↑", note:""},
+  ism:         {dir:"-", note:""},
+  cpi:         {dir:"-", note:""},
+  ppi:         {dir:"-", note:""},
+  pce:         {dir:"-", note:""},
+  tedSpread:   {dir:"-", note:""},
+  crb:         {dir:"↑", note:""},
+  bdi:         {dir:"↑", note:""},
+  ifo:         {dir:"-", note:""},
+  euCpi:       {dir:"-", note:""},
+  jobless:     {dir:"-", note:""},
+  lei:         {dir:"-", note:""},
+  cfnai:       {dir:"-", note:""},
+  igSpread:    {dir:"-", note:""},
+  hySpread:    {dir:"↓", note:""},
+  emSpread:    {dir:"-", note:""},
+  pcc:         {dir:"↑", note:""},
+  pcce:        {dir:"↑", note:""},
+  realYield:   {dir:"↓", note:""},
+  breakeven:   {dir:"↑", note:""},
+  us2y:        {dir:"↑", note:""},
+  us10y:       {dir:"↑", note:""},
+  dxy:         {dir:"↑", note:""},
+  oil:         {dir:"↑", note:""},
+  euribor:     {dir:"↑", note:""},
+  copperGold:  {dir:"-", note:""},
+  ismNewOrders:{dir:"-", note:""},
+  ismEmployment:{dir:"-",note:""},
+  ismPricesPaid:{dir:"-",note:""},
+  retailSales: {dir:"-", note:""},
+  housingStarts:{dir:"↑", note:""},
+  m2Dxy:       {dir:"↓", note:""},
+  nfp:         {dir:"-", note:""},
+  ppiMom:      {dir:"-", note:""},
+  ppiCoreMom:  {dir:"-", note:""},
+  cpiMom:      {dir:"-", note:""},
+  cpiCoreMom:  {dir:"-", note:""},
+  euCpiMom:    {dir:"-", note:""},
+  euCpiCoreMom:{dir:"-", note:""},
+  euPpiMom:    {dir:"-", note:""},
+  euPpiYoy:    {dir:"-", note:""},
+  de02y:       {dir:"↑", note:""},
+  spread2y:    {dir:"↓", note:""},
+  spread10y:   {dir:"↓", note:""},
+  pceMom:      {dir:"-", note:""},
+  athi:        {dir:"↓", note:""},
+  atlo:        {dir:"↑", note:""},
+  trin:        {dir:"↓", note:""},
+  spx:         {dir:"↓", note:""},
+  btpBund:     {dir:"↑", note:""},
+  vvixVix:     {dir:"↑", note:""},
+  dtb3:        {dir:"↓", note:""},
+  sofr:        {dir:"-", note:""},
+  euur:        {dir:"-", note:""},
+  eujvr:       {dir:"-", note:""},
+  de10y:       {dir:"↑", note:""},
+  eurusd:      {dir:"-", note:""},
+  sx5e:        {dir:"↓", note:""},
+  eursyy:      {dir:"-", note:""},
+  deppimm:     {dir:"↑", note:""},
+  deppiyy:     {dir:"↑", note:""},
+  deCurve:     {dir:"↑", note:""},
+  euRealYield: {dir:"↑", note:""},
 };
 const GOOD_DIR = {
   yieldCurve:"↑", vix:"↓", move:"↓", ism:"↑", ismNewOrders:"↑",
@@ -2306,7 +2226,7 @@ const IND_META = {
   dtb3:        {label:"DTB3 T-Bill 3M Secondario",  fmt:v=>`${v.toFixed(2)}%`,
     desc:"Tasso T-Bill 3M mercato secondario — sostituto TEDRATE (aggiornato FRED).\n🟢 <3% = liquidità abbondante\n🟡 3-4% = neutro\n🔴 >4.5% = stress liquidità USA"},
   sofr:        {label:"SOFR Secured Overnight Rate",  fmt:v=>`${v.toFixed(2)}%`,
-    desc:"Tasso overnight garantito da Treasury — proxy Fed Funds più affidabile di LIBOR.\n🟢 <3% = Fed accomodante\n🔴 >4.5% = Fed restrittiva"},
+    desc:"Tasso overnight garantito da Treasury — proxy Fed Funds più affidabile di LIBOR.\n🟢 <3% = Fed accomodante\n🟡 3-4.5% = neutro\n🔴 >4.5% = Fed restrittiva"},
   us10y:       {label:"US 10Y Treasury Yield",         fmt:v=>`${v.toFixed(3)}%`,
     desc:"Rendimento Treasury 10 anni — tasso di riferimento globale.\n🟢 <3% = regime tassi bassi\n🟡 3-4% = neutro\n🔴 >4% = tassi alti, pressione su equity e bond"},
   de10y:       {label:"DE10Y Bund 10 Anni",            fmt:v=>`${v.toFixed(3)}%`,
