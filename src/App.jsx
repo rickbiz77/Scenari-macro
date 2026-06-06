@@ -477,6 +477,7 @@ let RISK_MOM_DATA=[
   {t:"CPER",n:"US Copper Index Fund",     p:30.00, g:null, w:null},
   {t:"USO", n:"US Oil Fund (WTI)",        p:78.00, g:null, w:null},
   {t:"UUP", n:"Invesco DB US Dollar Bull", p:28.00, g:null, w:null},
+  {t:"FEZ", n:"SPDR Euro Stoxx 50 (Europa)", p:55.00, g:null, w:null},
 ];
 function buildPriceMap(){
   const m={};
@@ -487,7 +488,9 @@ function buildPriceMap(){
 }
 function isUSOpen(){
   try{
-    const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Europe/Rome",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(new Date());
+    const parts=new Intl.DateTimeFormat("en-GB",{timeZone:"Europe/Rome",weekday:"short",hour:"2-digit",minute:"2-digit",hour12:false}).formatToParts(new Date());
+    const wd=parts.find(p=>p.type==="weekday").value;
+    if(wd==="Sat"||wd==="Sun")return false;   // weekend = mercati chiusi
     const h=parseInt(parts.find(p=>p.type==="hour").value,10);
     const mn=parseInt(parts.find(p=>p.type==="minute").value,10);
     return (h*60+mn)>=(15*60+30);
@@ -616,12 +619,23 @@ const GROUP3_W={
   URA:{dol:5},
   TIP:{dol:3,tsy:20},
 };
+// scenari di RIFERIMENTO del gruppo 3 (base = MAX solo su questi, non su tutte le appartenenze)
+const GROUP3_CORE={
+  GLD:["debasement","stagflation"], SLV:["debasement","stagflation"], GDX:["debasement","stagflation"], SIL:["debasement","stagflation"],
+  DBC:["stagflation","reflation"], XLE:["stagflation","reflation"], DBA:["stagflation","reflation"], MOO:["stagflation","reflation"],
+  COPX:["reflation","debasement"], XME:["reflation","debasement"], XLB:["reflation","debasement"], REMX:["reflation","debasement"],
+  URA:["stagflation","reflation"], TIP:["stagflation"],
+};
 // driver ETF nazionali — petrolio col segno (export+ / import−); gli altri magnitudini positive
 const OIL_NAZ={KSA:20,EWC:12,EWZ:10,EWA:8,EWW:5,ILF:5,EEM:-3,EZA:-5,EWL:-4,EWN:-6,EWQ:-6,EWS:-6,GREK:-8,EPOL:-10,EWP:-10,EWT:-10,MCHI:-10,VEA:-5,DVYA:-5,EWI:-12,EWY:-12,DXJ:-12,EWG:-15,INDY:-18,TUR:-18};
 const DOLLAR_NAZ={EWZ:15,TUR:15,EZA:15,EWW:12,EEM:10,ILF:10,INDY:10,MCHI:8,EWY:6,EWT:6,THD:6};
 const CHINA_NAZ={MCHI:20,EWA:15,EWZ:12,EWG:8,EEM:8,EWY:5,EWT:5,THD:5};
 const SEMI_NAZ={EWT:18,EWY:15,MCHI:5};
 const METALS_NAZ={EWA:12,EZA:12,EWZ:10,ILF:10,EWC:6,EEM:5};
+// momentum REGIONALE (antenna per lo sganciamento non-USA): regione su = bonus, regione giu = malus
+const REGION_W=10;
+const REGION_EU=new Set(["EWG","EWQ","EWI","EWP","EWN","EWL","GREK","EPOL"]);                 // -> FEZ
+const REGION_EM=new Set(["EWZ","EWW","ILF","MCHI","EWT","EWY","INDY","THD","EZA","TUR","KSA","EWS","DVYA","EWA"]); // -> EEM (escluso EEM stesso)
 
 function gateValue(ticker, riskMom, scenarioScores, national){
   let v, label;
@@ -632,11 +646,14 @@ function gateValue(ticker, riskMom, scenarioScores, national){
     v+=driverContrib("MCHI", CHINA_NAZ[ticker]||0);
     v+=driverContrib("SMH",  SEMI_NAZ[ticker]||0);
     v+=driverContrib("XME",  METALS_NAZ[ticker]||0);
+    if(REGION_EU.has(ticker)) v+=driverContrib("FEZ", REGION_W);        // Europa: momentum Euro Stoxx
+    else if(REGION_EM.has(ticker)) v+=driverContrib("EEM", REGION_W);   // EM/Asia: momentum emergenti
   } else if(GATE_RISKOFF.has(ticker)){
     label="risk-off"; v=100-riskMom;
   } else if(GROUP3_W[ticker]!==undefined){
     label="scenario";
-    var scs=(TICKER_SCENARIOS[ticker]||[]).map(function(id){return scenarioScores?scenarioScores[id]:null;}).filter(function(x){return x!=null;});
+    var core=GROUP3_CORE[ticker]||TICKER_SCENARIOS[ticker]||[];
+    var scs=core.map(function(id){return scenarioScores?scenarioScores[id]:null;}).filter(function(x){return x!=null;});
     v=scs.length?Math.max.apply(null,scs):50;
     var w=GROUP3_W[ticker];
     if(w.dol) v+=driverContrib("UUP", -w.dol);   // dollaro su = malus (commodity contrarie al $)
