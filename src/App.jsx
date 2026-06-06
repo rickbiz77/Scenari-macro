@@ -609,22 +609,21 @@ function driverContrib(ticker, weight, scale){
 // ticker -> scenari di appartenenza (base del gruppo 3 = score finale più alto fra questi)
 const TICKER_SCENARIOS=(function(){var m={};SCENARIOS.forEach(function(s){s.etfs.forEach(function(e){(m[e.t]=m[e.t]||[]).push(s.id);});});return m;})();
 // gruppo 2 (risk-off / difensivi), ITA incluso
-const GATE_RISKOFF=new Set(["XLU","XLP","XLV","TLT","IEF","SHY","BIL","LQD","VDST","FXF","ITA"]);
+const GATE_RISKOFF=new Set(["XLU","XLP","XLV","TLT","IEF","SHY","BIL","LQD","VDST","FXF","ITA","SCHD","VTV"]);
 // gruppo 3 (scenario-dipendenti): pesi driver per ticker {dol=dollaro, oil=petrolio, cina, tsy=treasury}
 const GROUP3_W={
   GLD:{dol:20,tsy:15}, SLV:{dol:20,tsy:15}, GDX:{dol:20,tsy:15}, SIL:{dol:20,tsy:15},
-  COPX:{dol:12,cina:15}, XME:{dol:12,cina:5}, REMX:{dol:12,cina:5}, XLB:{dol:12,cina:5},
+  COPX:{dol:12,cina:15}, XME:{dol:12,cina:5}, XLB:{dol:12,cina:5},
   XLE:{dol:8,oil:20}, DBC:{dol:8,oil:20},
   MOO:{dol:8,oil:10}, DBA:{dol:8,oil:10},
-  URA:{dol:5},
   TIP:{dol:3,tsy:20},
 };
 // scenari di RIFERIMENTO del gruppo 3 (base = MAX solo su questi, non su tutte le appartenenze)
 const GROUP3_CORE={
   GLD:["debasement","stagflation"], SLV:["debasement","stagflation"], GDX:["debasement","stagflation"], SIL:["debasement","stagflation"],
   DBC:["stagflation","reflation"], XLE:["stagflation","reflation"], DBA:["stagflation","reflation"], MOO:["stagflation","reflation"],
-  COPX:["reflation","debasement"], XME:["reflation","debasement"], XLB:["reflation","debasement"], REMX:["reflation","debasement"],
-  URA:["stagflation","reflation"], TIP:["stagflation"],
+  COPX:["reflation","debasement"], XME:["reflation","debasement"], XLB:["reflation","debasement"],
+  TIP:["stagflation"],
 };
 // driver ETF nazionali — petrolio col segno (export+ / import−); gli altri magnitudini positive
 const OIL_NAZ={KSA:20,EWC:12,EWZ:10,EWA:8,EWW:5,ILF:5,EEM:-3,EZA:-5,EWL:-4,EWN:-6,EWQ:-6,EWS:-6,GREK:-8,EPOL:-10,EWP:-10,EWT:-10,MCHI:-10,VEA:-5,DVYA:-5,EWI:-12,EWY:-12,DXJ:-12,EWG:-15,INDY:-18,TUR:-18};
@@ -636,6 +635,8 @@ const METALS_NAZ={EWA:12,EZA:12,EWZ:10,ILF:10,EWC:6,EEM:5};
 const REGION_W=10;
 const REGION_EU=new Set(["EWG","EWQ","EWI","EWP","EWN","EWL","GREK","EPOL"]);                 // -> FEZ
 const REGION_EM=new Set(["EWZ","EWW","ILF","MCHI","EWT","EWY","INDY","THD","EZA","TUR","KSA","EWS","DVYA","EWA"]); // -> EEM (escluso EEM stesso)
+// tilt secondari su asset risk-on con sensibilità a una commodity (oltre al Risk Mom di base)
+const RISKON_DRIVERS={URA:{oil:8}};   // uranio: risk-on + petrolio
 
 function gateValue(ticker, riskMom, scenarioScores, national){
   let v, label;
@@ -653,8 +654,15 @@ function gateValue(ticker, riskMom, scenarioScores, national){
   } else if(GROUP3_W[ticker]!==undefined){
     label="scenario";
     var core=GROUP3_CORE[ticker]||TICKER_SCENARIOS[ticker]||[];
-    var scs=core.map(function(id){return scenarioScores?scenarioScores[id]:null;}).filter(function(x){return x!=null;});
-    v=scs.length?Math.max.apply(null,scs):50;
+    var bestScore=-1;
+    core.forEach(function(id){var sc=scenarioScores?scenarioScores[id]:null; if(sc!=null&&sc>bestScore)bestScore=sc;});
+    if(bestScore<0){ v=50; }
+    else {
+      var rank=1;
+      if(scenarioScores){ for(var k in scenarioScores){ if(scenarioScores[k]!=null && scenarioScores[k]>bestScore) rank++; } }
+      var rf = rank<=1?1.0 : rank===2?0.88 : rank===3?0.72 : rank===4?0.62 : rank===5?0.52 : 0.42;
+      v = bestScore*rf;
+    }
     var w=GROUP3_W[ticker];
     if(w.dol) v+=driverContrib("UUP", -w.dol);   // dollaro su = malus (commodity contrarie al $)
     if(w.oil) v+=driverContrib("USO", w.oil);    // petrolio su = bonus
@@ -662,6 +670,8 @@ function gateValue(ticker, riskMom, scenarioScores, national){
     if(w.tsy) v+=driverContrib("TLT", w.tsy);    // TLT su (tassi giù) = bonus; TLT giù (tassi su) = malus
   } else {
     label="risk-on"; v=riskMom;
+    var rd=RISKON_DRIVERS[ticker];
+    if(rd&&rd.oil) v+=driverContrib("USO", rd.oil);   // tilt secondario commodity (es. URA ~ petrolio)
   }
   v=Math.max(0,Math.min(100,v));
   var col=v>=60?"#10B981":v<=40?"#EF4444":"#F59E0B";
