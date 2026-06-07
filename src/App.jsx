@@ -613,7 +613,6 @@ const GATE_RISKOFF=new Set(["XLU","XLP","XLV","TLT","IEF","SHY","BIL","LQD","VDS
 // gruppo 3 (scenario-dipendenti): pesi driver per ticker {dol=dollaro, oil=petrolio, cina, tsy=treasury}
 const GROUP3_W={
   GLD:{dol:20,tsy:15}, SLV:{dol:20,tsy:15}, GDX:{dol:20,tsy:15}, SIL:{dol:20,tsy:15},
-  COPX:{dol:12,cina:15}, XME:{dol:12,cina:5}, XLB:{dol:12,cina:5},
   XLE:{dol:8,oil:20}, DBC:{dol:8,oil:20},
   MOO:{dol:8,oil:10}, DBA:{dol:8,oil:10},
   TIP:{dol:3,tsy:20},
@@ -622,7 +621,6 @@ const GROUP3_W={
 const GROUP3_CORE={
   GLD:["debasement","stagflation"], SLV:["debasement","stagflation"], GDX:["debasement","stagflation"], SIL:["debasement","stagflation"],
   DBC:["stagflation","reflation"], XLE:["stagflation","reflation"], DBA:["stagflation","reflation"], MOO:["stagflation","reflation"],
-  COPX:["reflation","debasement"], XME:["reflation","debasement"], XLB:["reflation","debasement"],
   TIP:["stagflation"],
 };
 // driver ETF nazionali — petrolio col segno (export+ / import−); gli altri magnitudini positive
@@ -636,7 +634,7 @@ const REGION_W=10;
 const REGION_EU=new Set(["EWG","EWQ","EWI","EWP","EWN","EWL","GREK","EPOL"]);                 // -> FEZ
 const REGION_EM=new Set(["EWZ","EWW","ILF","MCHI","EWT","EWY","INDY","THD","EZA","TUR","KSA","EWS","DVYA","EWA"]); // -> EEM (escluso EEM stesso)
 // tilt secondari su asset risk-on con sensibilità a una commodity (oltre al Risk Mom di base)
-const RISKON_DRIVERS={URA:{oil:8}};   // uranio: risk-on + petrolio
+const RISKON_DRIVERS={URA:{oil:8}, COPX:{cina:12,dol:8}, XME:{cina:5,dol:12}, XLB:{cina:5,dol:12}};   // uranio~petrolio; rame/metalli/materiali (Dr. Copper)~risk-on + Cina/dollaro
 
 function gateValue(ticker, riskMom, scenarioScores, national){
   let v, label;
@@ -671,7 +669,11 @@ function gateValue(ticker, riskMom, scenarioScores, national){
   } else {
     label="risk-on"; v=riskMom;
     var rd=RISKON_DRIVERS[ticker];
-    if(rd&&rd.oil) v+=driverContrib("USO", rd.oil);   // tilt secondario commodity (es. URA ~ petrolio)
+    if(rd){
+      if(rd.oil) v+=driverContrib("USO", rd.oil);
+      if(rd.cina)v+=driverContrib("MCHI", rd.cina);
+      if(rd.dol) v+=driverContrib("UUP", -rd.dol);   // dollaro su = malus
+    }
   }
   v=Math.max(0,Math.min(100,v));
   var col=v>=60?"#10B981":v<=40?"#EF4444":"#F59E0B";
