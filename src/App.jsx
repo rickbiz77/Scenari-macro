@@ -472,6 +472,7 @@ const SCENARIO_CFG = {
 };
 
 // ── RISK MOM (intraday) ───────────────────────────────────────────
+let SPY_SAT=null; // saturazione di mercato (SPY, da riga A11 del foglio): {st,s200,z,s50,g,w,m,q}
 let RISK_MOM_DATA=[
   {t:"HYG", n:"iShares iBoxx High Yield", p:79.00, g:null, w:null},
   {t:"CPER",n:"US Copper Index Fund",     p:30.00, g:null, w:null},
@@ -676,15 +677,47 @@ function gateValue(ticker, riskMom, scenarioScores, national){
     }
   }
   v=Math.max(0,Math.min(100,v));
-  var col=v>=60?"#10B981":v<=40?"#EF4444":"#F59E0B";
+  var col=v>=60?"#10B981":v>=50?"#EAB308":v>=40?"#F97316":"#EF4444";
   return {v:v,col:col,label:label};
 }
+function gateDot(col){return col==="#10B981"?"🟢":col==="#EAB308"?"🟡":col==="#F97316"?"🟠":"🔴";}
 function GatePill({ticker,riskMom,scenarioScores,national}){
   const g=gateValue(ticker,riskMom,scenarioScores,national);
-  const dot=g.col==="#10B981"?"🟢":g.col==="#EF4444"?"🔴":"🟡";
-  return <div title={"Gate "+g.label} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
-    <div style={{fontSize:6,color:"#475569",letterSpacing:1}}>GATE</div>
-    <span style={{fontSize:14,lineHeight:1}}>{dot}</span>
+  return <div title={"🚦 "+g.label+" ("+Math.round(g.v)+")"} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
+    <div style={{fontSize:11,lineHeight:1}}>🚦</div>
+    <span style={{fontSize:13,lineHeight:1}}>{gateDot(g.col)}</span>
+  </div>;
+}
+
+// ── TERMOMETRO: saturazione/ipercomprato (z 30% · stoca 25% · SMA200 18% · SMA50 12% · tempo 15%) ──
+function satTime(w,m,q){
+  if(w===null||w===undefined||isNaN(w)||m===null||m===undefined||isNaN(m))return null;
+  if(m<=0)return 0;                       // non in salita → niente esaurimento rialzista
+  var pace=m/4.3;                         // passo settimanale medio del mese
+  var exhaustion=pace>0?Math.max(0,Math.min(100,100-(w/pace)*50)):50; // rallenta mentre teso → tirato
+  var up=0,tot=0;[w,m,q].forEach(function(x){if(x!==null&&x!==undefined&&!isNaN(x)){tot++;if(x>0)up++;}});
+  var maturity=tot?(up/tot)*100:50;       // quante finestre in salita → rialzo prolungato
+  return exhaustion*0.65+maturity*0.35;
+}
+function satScore(o){
+  if(!o)return null;
+  var num=0,den=0;
+  function add(v,w){if(v!==null&&v!==undefined&&!isNaN(v)){num+=v*w;den+=w;}}
+  var sStoch=(o.st!==null&&o.st!==undefined&&!isNaN(o.st))?Math.max(0,Math.min(100,o.st)):null;
+  var sZ=(o.z!==null&&o.z!==undefined&&!isNaN(o.z))?Math.max(0,Math.min(100,50+o.z*25)):null;
+  var sS200=(o.s200!==null&&o.s200!==undefined&&!isNaN(o.s200))?Math.max(0,Math.min(100,50+o.s200*2)):null;
+  var sS50=(o.s50!==null&&o.s50!==undefined&&!isNaN(o.s50))?Math.max(0,Math.min(100,50+o.s50*4)):null;
+  var sTime=satTime(o.w,o.m,o.q);
+  add(sZ,0.30);add(sStoch,0.25);add(sS200,0.18);add(sS50,0.12);add(sTime,0.15);
+  return den>0?num/den:null;              // re-normalizza sui pesi effettivamente presenti
+}
+function satColor(v){return (v===null||v===undefined||isNaN(v))?"#6b7280":v>=75?"#EF4444":v>=60?"#F97316":v>=45?"#EAB308":"#10B981";}
+function satDot(v){return (v===null||v===undefined||isNaN(v))?"⚪":v>=75?"🔴":v>=60?"🟠":v>=45?"🟡":"🟢";}
+function satLabel(v){return (v===null||v===undefined||isNaN(v))?"—":v>=75?"IPERCOMPRATO":v>=60?"TIRATO":v>=45?"CARICO":"SCARICO";}
+function SatPill({v}){
+  return <div title={"🌡️ Saturazione "+((v===null||v===undefined||isNaN(v))?"n/d":Math.round(v))} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
+    <div style={{fontSize:11,lineHeight:1}}>🌡️</div>
+    <span style={{fontSize:13,lineHeight:1}}>{satDot(v)}</span>
   </div>;
 }
 
@@ -753,12 +786,13 @@ function parseScenariCSV(text){
   var SCEN_MAP={"GOLDILOCKS ECONOMY":"goldilocks","RECESSION":"recession","STAGFLATION":"stagflation","REFLATION":"reflation","DISINFLATION/SOFT LANDING":"disinflation","DOLLAR WEAKNESS/GLOBAL REBALANCING +BITCOIN":"dollarweaknessbtc","DOLLAR WEAKNESS/GLOBAL REBALANCING":"dollarweakness","DEFLATION":"deflation","DEBASEMENT AGGRESSIVO":"debasementbtc","DEBASEMENT (SENZA BITCOIN)":"debasement"};
   var lines=text.split("\n");
   var upd={};var cur=null;var etfs=[];
-  var riskMom=[];var inRiskMom=false;
+  var riskMom=[];var inRiskMom=false;var spySat=null;
   function flush(){ if(cur&&etfs.length){if(!upd[cur])upd[cur]={etfs:[],avg:{}};upd[cur].etfs=etfs.slice();} }
   for(var li=0;li<lines.length;li++){
     var line=lines[li].split("\r").join("");
     var cols=pCSV(line);
     var f=(cols[0]||"").trim().toUpperCase();
+    if(f==="SPY"&&cols[2]){spySat={st:pPct(cols[12]),s200:pPct(cols[13]),z:pPct(cols[14]),s50:pPct(cols[15]),g:pPct(cols[3]),w:pPct(cols[4]),m:pPct(cols[5]),q:pPct(cols[6])};}
     if(!f){ flush(); continue; }
     if(f==="RISK MOM"){ flush(); cur=null; inRiskMom=true; etfs=[]; continue; }
     var sid=SCEN_MAP[f];
@@ -776,11 +810,11 @@ function parseScenariCSV(text){
       continue;
     }
     if(f==="TICKER"||!cols[0]||!cols[2])continue;
-    var e={t:cols[0].trim(),n:cols[1]||"",p:pPx(cols[2]),g:pPct(cols[3]),w:pPct(cols[4]),m:pPct(cols[5]),q:pPct(cols[6]),s:pPct(cols[7]),y:pPct(cols[8]),y2:pPct(cols[9]),y3:pPct(cols[10]),y5:pPct(cols[11])};
+    var e={t:cols[0].trim(),n:cols[1]||"",p:pPx(cols[2]),g:pPct(cols[3]),w:pPct(cols[4]),m:pPct(cols[5]),q:pPct(cols[6]),s:pPct(cols[7]),y:pPct(cols[8]),y2:pPct(cols[9]),y3:pPct(cols[10]),y5:pPct(cols[11]),st:pPct(cols[12]),s200:pPct(cols[13]),z:pPct(cols[14]),s50:pPct(cols[15])};
     if(e.p)etfs.push(e);
   }
   flush();
-  return {scenari:upd, riskMom:riskMom};
+  return {scenari:upd, riskMom:riskMom, spySat:spySat};
 }
 function parseNazionaliCSV(text){
   var lines=text.split("\n");
@@ -790,7 +824,7 @@ function parseNazionaliCSV(text){
     var cols=pCSV(line);
     if((cols[0]||"").trim().toUpperCase()==="TICKER"){ok=true;continue;}
     if(!ok||!cols[0]||!cols[2])continue;
-    var e={t:cols[0].trim(),n:cols[1]||"",p:pPx(cols[2]),g:pPct(cols[3]),w:pPct(cols[4]),m:pPct(cols[5]),q:pPct(cols[6]),s:pPct(cols[7]),y:pPct(cols[8]),y2:pPct(cols[9]),y3:pPct(cols[10]),y5:pPct(cols[11])};
+    var e={t:cols[0].trim(),n:cols[1]||"",p:pPx(cols[2]),g:pPct(cols[3]),w:pPct(cols[4]),m:pPct(cols[5]),q:pPct(cols[6]),s:pPct(cols[7]),y:pPct(cols[8]),y2:pPct(cols[9]),y3:pPct(cols[10]),y5:pPct(cols[11]),st:pPct(cols[12]),s200:pPct(cols[13]),z:pPct(cols[14]),s50:pPct(cols[15])};
     if(e.p)etfs.push(e);
   }
   return etfs;
@@ -890,6 +924,8 @@ export default function App(){
       if(savedNaz){try{var naz=JSON.parse(savedNaz);if(naz&&naz.length>0){ETF_NAZIONALI.length=0;naz.forEach(function(e){ETF_NAZIONALI.push(e);});}}catch(e){}}
       var savedRm=localStorage.getItem("pr_riskmom");
       if(savedRm){try{var rm=JSON.parse(savedRm);if(rm&&rm.length>0){RISK_MOM_DATA.length=0;rm.forEach(function(e){RISK_MOM_DATA.push(e);});}}catch(e){}}
+      var savedSpySat=localStorage.getItem("pr_spysat");
+      if(savedSpySat){try{SPY_SAT=JSON.parse(savedSpySat);}catch(e){}}
       var savedInd=localStorage.getItem("pr_indicators");
       if(savedInd){var ind=JSON.parse(savedInd);Object.keys(ind).forEach(function(k){INDICATORS[k]=ind[k];});}
       var savedPrev=localStorage.getItem("pr_prev_indicators");
@@ -970,6 +1006,7 @@ export default function App(){
         stRm=true;
         try{localStorage.setItem("pr_riskmom",JSON.stringify(RISK_MOM_DATA));}catch(e){}
       }
+      if(res.spySat){SPY_SAT=res.spySat;try{localStorage.setItem("pr_spysat",JSON.stringify(SPY_SAT));}catch(e){}}
     }
     if(r2){
       var naz=parseNazionaliCSV(r2);
@@ -986,9 +1023,13 @@ export default function App(){
       var updKeys=Object.keys(macroUpd).filter(function(k){return INDICATORS.hasOwnProperty(k);});
       var macroCount=new Set(updKeys).size;
       if(macroCount>0){
-        try{localStorage.setItem("pr_prev_indicators",JSON.stringify(INDICATORS));}catch(e){}
-        Object.keys(INDICATORS).forEach(function(k){PREV_INDICATORS[k]=INDICATORS[k];});
-        updKeys.forEach(function(k){INDICATORS[k]=macroUpd[k];});
+        updKeys.forEach(function(k){
+          if(macroUpd[k]!==INDICATORS[k]){          // shelvio nel precedente SOLO se cambia davvero
+            PREV_INDICATORS[k]=INDICATORS[k];
+            INDICATORS[k]=macroUpd[k];
+          }
+        });
+        try{localStorage.setItem("pr_prev_indicators",JSON.stringify(PREV_INDICATORS));}catch(e){}
         try{localStorage.setItem("pr_indicators",JSON.stringify(INDICATORS));}catch(e){}
         stMacro=macroCount>=totalInd*0.5;
       }
@@ -1004,9 +1045,13 @@ export default function App(){
     const upd=parseMacroText(macroText);
     const n=Object.keys(upd).length;
     if(n===0){setRefreshMsg("Nessun ticker riconosciuto");return;}
-    try{localStorage.setItem("pr_prev_indicators",JSON.stringify(INDICATORS));}catch(e){}
-    Object.keys(INDICATORS).forEach(function(k){PREV_INDICATORS[k]=INDICATORS[k];});
-    Object.keys(upd).forEach(function(k){INDICATORS[k]=upd[k];});
+    Object.keys(upd).forEach(function(k){
+      if(upd[k]!==INDICATORS[k]){                   // shelvio nel precedente SOLO se cambia davvero
+        if(INDICATORS[k]!==undefined)PREV_INDICATORS[k]=INDICATORS[k];
+        INDICATORS[k]=upd[k];
+      }
+    });
+    try{localStorage.setItem("pr_prev_indicators",JSON.stringify(PREV_INDICATORS));}catch(e){}
     if(!window._macroUpdated)window._macroUpdated={};
     Object.keys(upd).forEach(function(k){window._macroUpdated[k]=true;});
     const SKIP_IND=["tedSpread","euRealYield","deCurve"];
@@ -1025,6 +1070,9 @@ export default function App(){
   const allEtfScores=calcAllEtfScores();
   const momMap=Object.fromEntries(allMomScores.map(s=>[s.id,s]));
   const etfMap=Object.fromEntries(allEtfScores.map(e=>[e.t,e]));
+  const _satSrc=buildPriceMap();
+  const satMap=Object.fromEntries(Object.keys(_satSrc).map(t=>{const e=_satSrc[t];return [t,satScore({st:e.st,s200:e.s200,z:e.z,s50:e.s50,w:e.w,m:e.m,q:e.q})];}));
+  const spyMarketSat=satScore(SPY_SAT);
   const leadMap=Object.fromEntries(SCENARIOS.map(s=>[s.id,calcLeadingScore(s.id)]));
   const finalMap=Object.fromEntries(SCENARIOS.map(s=>{const m=momMap[s.id]?.composite,l=leadMap[s.id];return[s.id,calcFinalScore(m,l,s.id,history)];}));
 
@@ -1066,7 +1114,7 @@ export default function App(){
     if(d===null) return <span style={{...base,background:"#1e293b",border:"1px solid #374151",color:"#374151"}}>—</span>;
     return <span style={{...base,background:c+"22",border:"1px solid "+c,color:c}}>{(d>=0?"+":"")+d.toFixed(1)}{a}</span>;
   }
-  function MiniGate({ticker,national}){return <GatePill ticker={ticker} riskMom={riskMomScore} scenarioScores={finalMap} national={national}/>;}
+  function MiniGate({ticker,national}){return <div style={{display:"flex",alignItems:"center",gap:6}}><GatePill ticker={ticker} riskMom={riskMomScore} scenarioScores={finalMap} national={national}/><SatPill v={satMap[ticker]}/></div>;}
 
   const sortedByFinal=[...SCENARIOS].sort((a,b)=>(finalMap[b.id]??-999)-(finalMap[a.id]??-999));
 
@@ -1172,7 +1220,7 @@ export default function App(){
             <tr style={{borderBottom:"1px solid #1f2937"}}>
               <th style={{textAlign:"left",padding:"5px 8px",fontSize:9,color:"#4b5563"}}>TICKER</th>
               <th style={{textAlign:"left",padding:"5px 8px",fontSize:9,color:"#4b5563"}}>NOME</th>
-              <th style={{textAlign:"center",padding:"5px 6px",fontSize:9,color:"#F59E0B"}}>MOM / GATE</th>
+              <th style={{textAlign:"center",padding:"5px 6px",fontSize:9,color:"#F59E0B"}}>MOM / 🚦 / 🌡️</th>
               <th style={{textAlign:"right",padding:"5px 6px",fontSize:9,color:"#4b5563"}}>PREZZO</th>
               {PERS.map(p=> <th key={p.k} style={{textAlign:"right",padding:"5px 4px",fontSize:9,color:per===p.k?"#F59E0B":"#4b5563",fontWeight:per===p.k?700:500}}>{p.l}</th>)}
             </tr>
@@ -1321,6 +1369,33 @@ export default function App(){
             <div style={{background:offCol+"22",border:"1px solid "+offCol,borderRadius:8,padding:"6px 16px",fontSize:13,fontWeight:800,color:offCol,letterSpacing:1}}>{riskLabel(riskOnOff)}</div>
             <div style={{fontFamily:"monospace",fontSize:36,fontWeight:900,color:offCol}}>{Math.round(riskOnOff)}<span style={{fontSize:14,color:"#6b7280"}}>%</span></div>
           </div>
+        </div>
+
+        {/* Saturazione di mercato (SPY) */}
+        <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:14,padding:20,marginBottom:12}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+            <span style={{fontSize:18}}>🌡️</span>
+            <div style={{fontSize:13,fontWeight:800,color:"#f8fafc"}}>Saturazione di mercato (SPY)</div>
+          </div>
+          <div style={{fontSize:10,color:"#6b7280",marginBottom:20}}>Quanto è tirato il mercato — z-score 30% · stocastico 25% · SMA200 18% · SMA50 12% · tempo 15%</div>
+          {(spyMarketSat===null||spyMarketSat===undefined||isNaN(spyMarketSat))
+            ? <div style={{fontSize:11,color:"#6b7280"}}>Dati SPY non disponibili (colonne M–P del foglio su riga SPY)</div>
+            : <div>
+                <div style={{position:"relative",marginBottom:8}}>
+                  <div style={{height:14,borderRadius:7,background:"linear-gradient(to right, #10B981, #84CC16, #F59E0B, #F97316, #EF4444)",position:"relative"}}>
+                    <div style={{position:"absolute",top:-6,left:"calc("+Math.max(0,Math.min(100,spyMarketSat))+"% - 8px)",width:16,height:26,background:"#fff",borderRadius:3,boxShadow:"0 0 8px rgba(255,255,255,0.6)",border:"2px solid #0f172a"}}/>
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",marginTop:6}}>
+                    <div style={{fontSize:8,color:"#10B981",fontWeight:600}}>Scarico</div>
+                    <div style={{fontSize:8,color:"#F59E0B",fontWeight:600}}>Carico</div>
+                    <div style={{fontSize:8,color:"#EF4444",fontWeight:600}}>Ipercomprato</div>
+                  </div>
+                </div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12,marginTop:16,marginBottom:8}}>
+                  <div style={{background:satColor(spyMarketSat)+"22",border:"1px solid "+satColor(spyMarketSat),borderRadius:8,padding:"6px 16px",fontSize:13,fontWeight:800,color:satColor(spyMarketSat),letterSpacing:1}}>{satLabel(spyMarketSat)}</div>
+                  <div style={{fontFamily:"monospace",fontSize:36,fontWeight:900,color:satColor(spyMarketSat)}}>{Math.round(spyMarketSat)}<span style={{fontSize:14,color:"#6b7280"}}>/100</span></div>
+                </div>
+              </div>}
         </div>
 
         {/* Ripartizione continua */}
@@ -1625,6 +1700,7 @@ export default function App(){
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8,flexWrap:"wrap",gap:8}}>
                   <div style={{fontSize:12,color:"#94a3b8",fontWeight:600}}>{meta.label}</div>
                   <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    {trendArrowEl(id,value,null)}
                     <div style={{fontFamily:"monospace",fontSize:22,fontWeight:800,color:vCol}}>
                       {hasVal?meta.fmt(value):"—"}
                     </div>
@@ -1671,15 +1747,7 @@ export default function App(){
         if(s>=38)return"NEUTRO/DOVISH";if(s>=25)return"DOVISH";return"DOVISH FORTE";
       }
 
-      // Freccia: verde se va nella direzione buona per hawkish, rossa altrimenti
-      function arrowEl(id,customGoodDir){
-        const trend=TRENDS[id];
-        if(!trend||!trend.dir||trend.dir==="-")return null;
-        const good=customGoodDir||GOOD_DIR[id];
-        if(!good)return null;
-        const color=trend.dir===good?"#10B981":"#EF4444";
-        return <span style={{fontSize:14,fontWeight:900,color}}>{trend.dir}</span>;
-      }
+      // Freccia: usa trendArrowEl module-level (valore attuale vs precedente, colore vs direzione buona)
 
       // ── INDICATORI FED ────────────────────────────────────
       const fedGroups=[
@@ -1782,9 +1850,9 @@ export default function App(){
       const bceScore=panelScore(bceGroups);
 
       function IndCard({ind}){
-        const c=hawkColor(ind.score);
+        const c=valueColor(ind.id,ind.val);
         const scoreVal=Math.max(2,ind.score||0);
-        const arrow=arrowEl(ind.id,ind.goodDir);
+        const arrow=trendArrowEl(ind.id,ind.val,ind.goodDir);
         const meta=IND_META[ind.id];
         const desc=meta?meta.desc:(ind.id==="dtb3sofr"?"Spread DTB3−SOFR — tensione di liquidità a breve termine.\n🟢 ~0 = funding normale\n🔴 ampio = stress di liquidità USA":"");
         return <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:8,padding:"10px 12px"}}>
@@ -2121,7 +2189,22 @@ const GOOD_DIR = {
   ppiMom:"↓", ppiCoreMom:"↓", cpiMom:"↓", cpiCoreMom:"↓",
   euCpiMom:"↓", euCpiCoreMom:"↓", euPpiMom:"↓", euPpiYoy:"↓",
   de02y:"↓", spread2y:"↑", spread10y:"↑", pceMom:"↓",
+  de10y:"↓", deCurve:"↑", euRealYield:"↓", btpBund:"↓", eursyy:"↑",
+  euur:"↓", eujvr:"↑", sx5e:"↑", deppimm:"↓", deppiyy:"↓",
+  dtb3:"↓", sofr:"↓", dtb3sofr:"↓", spx:"↑", eurusd:"↑",
 };
+// Freccia condivisa (Banche Centrali + Indicatori): direzione = valore attuale vs precedente; colore = vs direzione buona.
+function trendArrowEl(id, val, customGoodDir){
+  var prev=PREV_INDICATORS[id];
+  if(id==="dtb3sofr"&&(prev===null||prev===undefined||isNaN(prev))&&PREV_INDICATORS.dtb3!=null&&PREV_INDICATORS.sofr!=null){prev=PREV_INDICATORS.dtb3-PREV_INDICATORS.sofr;}
+  if(val===null||val===undefined||isNaN(val)||prev===null||prev===undefined||isNaN(prev))return null; // niente dato → niente freccia
+  if(val===prev)return null;                                  // nessun movimento → niente freccia
+  var dir=val>prev?"↑":"↓";
+  var good=customGoodDir||GOOD_DIR[id];
+  if(!good)return null;                                       // niente bussola → niente freccia
+  var color=dir===good?"#10B981":"#EF4444";
+  return <span style={{fontSize:14,fontWeight:900,color:color}}>{dir}</span>;
+}
 function arrowColor(id, dir){
   if(dir==="-") return "#F59E0B";
   const good = GOOD_DIR[id];
@@ -2200,6 +2283,7 @@ function valueColor(id, v){
     case "athi":         return v<100000?"#EF4444":v<300000?"#F59E0B":"#10B981";
     case "atlo":         return v<100000?"#10B981":v<250000?"#F59E0B":"#EF4444";
     case "spx":          return v<5000?"#EF4444":v<6500?"#EF4444":"#10B981";
+    case "dtb3sofr":   {var a=Math.abs(v);return a<0.1?"#10B981":a<0.25?"#F59E0B":"#EF4444";}
     default:           return "#94a3b8";
   }
 }
