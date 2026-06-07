@@ -1218,11 +1218,11 @@ export default function App(){
 
       const allEtfs=[];const seen2=new Set();
       SCENARIOS.forEach(s=>s.etfs.forEach(e=>{if(!seen2.has(e.t)){seen2.add(e.t);allEtfs.push({...e,scenarioId:s.id,scenarioColor:s.color});}}));
-      const RISK_IDS=new Set(["QQQ","XLK","XLY","SMH","IWM","VTI","IXUS","XLI","XLF","EEM","IBIT","SPY","URTH","SX5E","VTV"]);
-      const DEF_IDS=new Set(["GLD","TIP","XLU","XLP","TLT","IEF","LQD","DBC","XLE","XME","COPX","FXF"]);
       const CASH_IDS=new Set(["SHY","BIL"]);
-      const riskEtfs=allEtfs.filter(e=>!CASH_IDS.has(e.t)&&RISK_IDS.has(e.t)).sort((a,b)=>(etfMap[b.t]?.composite??0)-(etfMap[a.t]?.composite??0));
-      const defEtfs=allEtfs.filter(e=>!CASH_IDS.has(e.t)&&!RISK_IDS.has(e.t)).sort((a,b)=>(etfMap[b.t]?.composite??0)-(etfMap[a.t]?.composite??0));
+      // risk / difensivo DERIVATI dal gate: unica fonte di verità (niente liste separate che divergono)
+      const isRiskOnT=(t)=>!GATE_RISKOFF.has(t)&&GROUP3_W[t]===undefined;
+      const riskEtfs=allEtfs.filter(e=>!CASH_IDS.has(e.t)&&isRiskOnT(e.t)).sort((a,b)=>(etfMap[b.t]?.composite??0)-(etfMap[a.t]?.composite??0));
+      const defEtfs=allEtfs.filter(e=>!CASH_IDS.has(e.t)&&!isRiskOnT(e.t)).sort((a,b)=>(etfMap[b.t]?.composite??0)-(etfMap[a.t]?.composite??0));
       const cashEtfs=allEtfs.filter(e=>CASH_IDS.has(e.t)).sort((a,b)=>(etfMap[b.t]?.composite??0)-(etfMap[a.t]?.composite??0));
 
       if(selRiskBox){
