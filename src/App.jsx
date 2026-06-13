@@ -500,14 +500,23 @@ function isUSOpen(){
   }catch(e){return new Date().getHours()>=15;}
 }
 const RISK_MOM_CFG=[
-  {label:"SPY/IEF",  num:"SPY", den:"IEF", w:0.25, scale:2.5},
-  {label:"HYG/LQD",  num:"HYG", den:"LQD", w:0.20, scale:0.8},
-  {label:"SPY",      num:"SPY", den:null,  w:0.10, scale:2.5},
-  {label:"QQQ",      num:"QQQ", den:null,  w:0.10, scale:3.0},
-  {label:"CPER/GLD", num:"CPER",den:"GLD", w:0.12, scale:2.5},
-  {label:"XLY/XLP",  num:"XLY", den:"XLP", w:0.08, scale:2.0},
-  {label:"IBIT/GLD", num:"IBIT",den:"GLD", w:0.08, scale:4.0},
-  {label:"CPER/USO", num:"CPER",den:"USO", w:0.07, scale:3.0},
+  {label:"SPX",num:"INDEXSP:.INX",den:null,w:8,scale:2.5},
+  {label:"SX5E",num:"SX5E",den:null,w:5,scale:2.5},
+  {label:"NQ1!",num:"NQ1!",den:null,w:6,scale:3.0},
+  {label:"RTY1!",num:"RTY1!",den:null,w:3,scale:3.0},
+  {label:"DFII10",num:null,den:null,snap:"realYield",w:10,scale:0.20,inv:true},
+  {label:"HY",num:null,den:null,snap:"hySpread",w:10,scale:0.30,inv:true},
+  {label:"HG/GC",num:"HG1!",den:"GC1!",w:7,scale:3.0},
+  {label:"HG/CL",num:"HG1!",den:"CL1!",w:7,scale:4.0},
+  {label:"DXY",num:"DXY",den:null,w:8,scale:1.5,inv:true},
+  {label:"USDJPY",num:"USDJPY",den:null,w:6,scale:1.5},
+  {label:"AUDUSD",num:"AUDUSD",den:null,w:2,scale:1.5},
+  {label:"VIX",num:"VIX",den:null,w:6,scale:8.0,inv:true},
+  {label:"MOVE",num:"MOVE",den:null,w:4,scale:8.0,inv:true},
+  {label:"VVIX/VIX",num:"VVIX",den:"VIX",w:4,scale:6.0},
+  {label:"COR1M",num:"COR1M",den:null,w:8,scale:15.0,inv:true},
+  {label:"BTC/GC",num:"BTCUSD",den:"GC1!",w:3,scale:5.0},
+  {label:"XLY/XLP",num:"XLY",den:"XLP",w:3,scale:2.0},
 ];
 function riskMomBlend(e,morning){
   if(!e)return null;
@@ -521,19 +530,21 @@ function riskMomBlend(e,morning){
 }
 function calcRiskMomDetail(){
   const map=buildPriceMap();
-  const morning=!isUSOpen();
+  const morning=false;
   const rows=[];let tw=0,ts=0;
   RISK_MOM_CFG.forEach(c=>{
-    const num=map[c.num],den=c.den?map[c.den]:null;
     let pct=null;
-    if(c.den){
-      const bn=riskMomBlend(num,morning),bd=riskMomBlend(den,morning);
+    if(c.snap){
+      const cur=INDICATORS[c.snap],prev=PREV_INDICATORS[c.snap];
+      if(cur!=null&&prev!=null&&!isNaN(cur)&&!isNaN(prev))pct=cur-prev;
+    }else if(c.den){
+      const bn=riskMomBlend(map[c.num],morning),bd=riskMomBlend(map[c.den],morning);
       if(bn!=null&&bd!=null)pct=bn-bd;
     }else{
-      pct=riskMomBlend(num,morning);
+      pct=riskMomBlend(map[c.num],morning);
     }
     let score=null;
-    if(pct!=null&&!isNaN(pct)){score=Math.max(0,Math.min(100,50+(pct/c.scale)*50));}
+    if(pct!=null&&!isNaN(pct)){let pp=c.inv?-pct:pct;score=Math.max(0,Math.min(100,50+(pp/c.scale)*50));}
     rows.push({...c,pct,score});
     if(score!=null){ts+=score*c.w;tw+=c.w;}
   });
@@ -870,6 +881,26 @@ function parseIndicatoriCSV(text){
   if(upd.de10y!=null&&upd.euCpi!=null)upd.euRealYield=Math.round((upd.de10y-upd.euCpi)*1000)/1000;
   return upd;
 }
+function parseRiskMomFromIndic(text){
+  var rows=[],row=[],f="",q=false;
+  for(var i=0;i<text.length;i++){var c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
+    else { if(c==='"')q=true;
+      else if(c===','){row.push(f);f="";}
+      else if(c==='\n'){row.push(f);rows.push(row);row=[];f="";}
+      else if(c==='\r'){}
+      else f+=c; } }
+  if(f.length||row.length){row.push(f);rows.push(row);}
+  var out=[];
+  rows.forEach(function(r){
+    if(!r||r.length<4)return;
+    var t=(r[0]||"").trim(); if(!t)return;
+    var pp=itNum(r[2]),gg=itNum(r[3]);
+    if(pp===null||gg===null)return;
+    out.push({t:t,n:r[1]||"",p:pp,g:gg,w:itNum(r[4]),m:itNum(r[5]),q:itNum(r[6]),s:itNum(r[7]),y:itNum(r[8])});
+  });
+  return out;
+}
 function parseMacroText(text){
   var TM={"T10Y2Y":"yieldCurve","VIX":"vix","MOVE":"move","USBCOI":"ism","USMNO":"ismNewOrders","USMEMP":"ismEmployment","USMPR":"ismPricesPaid","USCIR":"cpi","USPPIYY":"ppi","USCPCEPIAC":"pce","USCCEPIAC":"pce","USPPIMM":"ppiMom","USCPCEPIMM":"pceMom","USIRMM":"cpiMom","DTB3":"dtb3","SOFR":"sofr","EUJVR":"eujvr","EUUR":"euur","EUIRYY":"euCpi","EUIRMM":"euCpiMom","EUCIRMM":"euCpiCoreMom","EUPPIMM":"euPpiMom","EUPPIYY":"euPpiYoy","DEPPIMM":"deppimm","DEPPIYY":"deppiyy","EURSYY":"eursyy","USRSYY":"retailSales","USHST":"housingStarts","M2SL/DXY":"m2Dxy","VVIX/VIX":"vvixVix","USNFP":"nfp","TRIN.NY":"trin","ATHI.NY":"athi","ATLO.NY":"atlo","USALOLITOAASTSAM":"lei","TRJEFFCRB":"crb","BDI":"bdi","DEIFOE":"ifo","USIJC":"jobless","USCFNAI":"cfnai","USCENAI":"cfnai","BAMLCOA0CM":"igSpread","BAMLCOAOCM":"igSpread","BAMLC0A0CM":"igSpread","BAMLHOAOHYM2":"hySpread","BAMLH0A0HYM2":"hySpread","BAMLEMHBHYCRPIOAS":"emSpread","PCC":"pcc","PCCE":"pcce","US10Y":"us10y","DFII10":"realYield","T5YIE":"breakeven","USO2Y":"us2y","US02Y":"us2y","US10Y-DE10Y":"spread10y","US1OY-DE10Y":"spread10y","US10Y-DE1OY":"spread10y","DE10Y-DE02Y":"deCurve","USO2Y-DEO2Y":"spread2y","US02Y-DE02Y":"spread2y","USO2Y-DE02Y":"spread2y","US02Y-DEO2Y":"spread2y","IT10Y-DE10Y":"btpBund","IT1OY-DE10Y":"btpBund","DE10Y":"de10y","DEO2Y":"de02y","DE02Y":"de02y","EURUSD":"eurusd","DXY":"dxy","USOIL":"oil","HG1!/GC1!":"copperGold","HG 1!/GC1!":"copperGold","SPX":"spx","SX5E":"sx5e","11!":"euribor","USCPPMM":"ppiCoreMom","USCIRMM":"cpiCoreMom","USBCOL":"ism","USOLL":"oil","BAMLCOACM":"igSpread"};
   var upd={};
@@ -1025,6 +1056,8 @@ export default function App(){
     }
     if(r3){
       var macroUpd=parseIndicatoriCSV(r3);
+      var rmIndic=parseRiskMomFromIndic(r3);
+      if(rmIndic&&rmIndic.length>0){RISK_MOM_DATA.length=0;rmIndic.forEach(function(e){RISK_MOM_DATA.push(e);});try{localStorage.setItem("pr_riskmom",JSON.stringify(RISK_MOM_DATA));}catch(e){}}
       var totalInd=Object.keys(INDICATORS).length;
       var updKeys=Object.keys(macroUpd).filter(function(k){return INDICATORS.hasOwnProperty(k);});
       var macroCount=new Set(updKeys).size;
@@ -1128,7 +1161,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v5</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v7</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
@@ -1353,8 +1386,25 @@ export default function App(){
 
         {/* Risk Mom (sx) + Risk Lead (dx) */}
         <div style={{display:"flex",gap:12,marginBottom:12}}>
-          <MiniBox title="Risk Mom" sub={riskMomDetail.morning?"🌅 Lettura mattina (proxy settimanale) — prezzi intraday dalle 15:30":"🇺🇸 Lettura USA (mercato aperto) — 70% daily + 30% settimanale"} score={riskMomScore} col={momCol}/>
+          <MiniBox title="Risk Mom" sub="70% daily + 30% settimanale (gate orario sempre attivo)" score={riskMomScore} col={momCol}/>
           <MiniBox title="Risk Lead" sub="Score macro da 62 indicatori (leading, lento)" score={riskLeadScore} col={leadCol}/>
+        </div>
+
+        {/* Risk Mom — dettaglio 17 voci */}
+        <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:14,padding:14,marginBottom:12}}>
+          <div style={{fontSize:9,color:"#6b7280",letterSpacing:1,marginBottom:10}}>RISK MOM — 17 VOCI · score 0 = risk-off, 100 = risk-on</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:6}}>
+            {riskMomDetail.rows.map((r,idx)=>{
+              const sat=r.score!=null&&(r.score>=98||r.score<=2);
+              const col=r.score==null?"#6b7280":r.score>=66?"#10B981":r.score>=45?"#F59E0B":"#EF4444";
+              return (
+                <div key={idx} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",borderRadius:8,padding:"5px 9px",border:sat?"1px solid #F59E0B":"1px solid #1f2937"}}>
+                  <span style={{fontSize:11,color:"#cbd5e1"}}>{r.label}{sat?" \u26a0\ufe0f":""}</span>
+                  <span style={{fontSize:12,fontWeight:800,fontFamily:"monospace",color:col}}>{r.score==null?"\u2014":Math.round(r.score)}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Risk On/Off composito a tutta larghezza */}
