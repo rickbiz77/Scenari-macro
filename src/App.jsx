@@ -553,7 +553,7 @@ function calcRiskLead(){
     {s:rs(IND.retailSales,5,1),w:2},{s:rs(IND.housingStarts,1500,1100),w:2},{s:rs(IND.nfp,250,80),w:3},
     {s:rs(IND.jobless,180,380),w:3},{s:rs(IND.bdi,2500,800),w:2},{s:rs(IND.copperGold,0.003,0.001),w:3},
     {s:rs(IND.vix,13,35),w:7},{s:rs(IND.move,70,120),w:3},{s:rs(IND.pcc,0.7,1.2),w:2},{s:rs(IND.pcce,0.6,1.1),w:2},
-    {s:rs(IND.hySpread,2.5,7.0),w:6},{s:rs(IND.igSpread,0.6,2.0),w:3},{s:rs(IND.emSpread,2.5,6.0),w:2},{s:rs(IND.tedSpread,0.1,0.5),w:2},
+    {s:rs(IND.hySpread,2.5,7.0),w:6},{s:rs(IND.igSpread,0.6,2.0),w:3},{s:rs(IND.emSpread,2.5,6.0),w:2},
     {s:rs(IND.yieldCurve,1.5,-0.5),w:4},{s:rs(deCurve,1.5,-0.3),w:3},{s:rs(IND.realYield,-0.5,2.5),w:3},
     {s:rs(IND.us2y,2.0,5.0),w:2},{s:rs(IND.de02y,1.5,4.0),w:2},{s:rs(IND.euribor,1.5,4.0),w:2},
     {s:rs(IND.spread2y,0.5,2.0),w:1},{s:rs(IND.spread10y,0.5,2.0),w:1},
@@ -831,39 +831,43 @@ function parseNazionaliCSV(text){
   }
   return etfs;
 }
+function itNum(s){
+  if(s==null)return null;
+  s=String(s).replace(/%/g,"").replace(/"/g,"").trim();
+  if(!s||s==="-"||s==="#N/A"||s==="#REF!"||s==="#DIV/0!"||s==="#VALUE!")return null;
+  var neg=false; if(s.charAt(0)==="-"){neg=true;s=s.substring(1);}
+  if(s.indexOf(".")>=0&&s.indexOf(",")>=0){ s=s.split(".").join("").split(",").join("."); }
+  else if(s.indexOf(",")>=0){ s=s.split(",").join("."); }
+  var n=parseFloat(s); if(isNaN(n))return null; return neg?-n:n;
+}
 function parseIndicatoriCSV(text){
-  var TM={"T10Y2Y":"yieldCurve","VIX":"vix","MOVE":"move","USBCOI":"ism","USBCOL":"ism","USMNO":"ismNewOrders","USMEMP":"ismEmployment","USMPR":"ismPricesPaid","USCIR":"cpi","USPPIYY":"ppi","USCPCEPIAC":"pce","USCCEPIAC":"pce","USPPIMM":"ppiMom","USCPCEPIMM":"pceMom","USCCEPIMM":"pceMom","USIRMM":"cpiMom","DTB3":"dtb3","SOFR":"sofr","EUJVR":"eujvr","EUUR":"euur","EUIRYY":"euCpi","EUIRMM":"euCpiMom","EUCIRMM":"euCpiCoreMom","EUPPIMM":"euPpiMom","EUPPIYY":"euPpiYoy","DEPPIMM":"deppimm","DEPPIYY":"deppiyy","EURSYY":"eursyy","USRSYY":"retailSales","USHST":"housingStarts","M2SL/DXY":"m2Dxy","VVIX/VIX":"vvixVix","USNFP":"nfp","TRIN.NY":"trin","ATHI.NY":"athi","ATLO.NY":"atlo","USALOLITOAASTSAM":"lei","TRJEFFCRB":"crb","BDI":"bdi","DEIFOE":"ifo","USIJC":"jobless","USCFNAI":"cfnai","USCENAI":"cfnai","BAMLCOA0CM":"igSpread","BAMLCOAOCM":"igSpread","BAMLC0A0CM":"igSpread","BAMLCOACM":"igSpread","BAMLHOAOHYM2":"hySpread","BAMLH0A0HYM2":"hySpread","BAMLEMHBHYCRPIOAS":"emSpread","PCC":"pcc","PCCE":"pcce","US10Y":"us10y","DFII10":"realYield","T5YIE":"breakeven","USO2Y":"us2y","US02Y":"us2y","US10Y-DE10Y":"spread10y","US1OY-DE10Y":"spread10y","DE10Y-DE02Y":"deCurve","DE10Y-DEO2Y":"deCurve","USO2Y-DEO2Y":"spread2y","US02Y-DE02Y":"spread2y","IT10Y-DE10Y":"btpBund","IT1OY-DE10Y":"btpBund","DE10Y":"de10y","DEO2Y":"de02y","DE02Y":"de02y","EURUSD":"eurusd","DXY":"dxy","USOIL":"oil","USOLL":"oil","HG1!/GC1!":"copperGold","HG 1!/GC1!":"copperGold","SPX":"spx","SX5E":"sx5e","11!":"euribor","USCPPMM":"ppiCoreMom","USCIRMM":"cpiCoreMom"};
+  var TM={"T10Y2Y":"yieldCurve","VIX":"vix","MOVE":"move","USBCOI":"ism","USBCOL":"ism","USMNO":"ismNewOrders","USMEMP":"ismEmployment","USMPR":"ismPricesPaid","USCIR":"cpi","USPPIYY":"ppi","USCPCEPIAC":"pce","USCCEPIAC":"pce","USPPIMM":"ppiMom","USCPCEPIMM":"pceMom","USCCEPIMM":"pceMom","USIRMM":"cpiMom","DTB3":"dtb3","SOFR":"sofr","EUJVR":"eujvr","EUUR":"euur","EUIRYY":"euCpi","EUIRMM":"euCpiMom","EUCIRMM":"euCpiCoreMom","EUPPIMM":"euPpiMom","EUPPIYY":"euPpiYoy","DEPPIMM":"deppimm","DEPPIYY":"deppiyy","EURSYY":"eursyy","USRSYY":"retailSales","USHST":"housingStarts","M2SL/DXY":"m2Dxy","VVIX/VIX":"vvixVix","USNFP":"nfp","TRIN.NY":"trin","ATHI.NY":"athi","ATLO.NY":"atlo","USALOLITOAASTSAM":"lei","TRJEFFCRB":"crb","BDI":"bdi","DEIFOE":"ifo","USIJC":"jobless","USCFNAI":"cfnai","USCENAI":"cfnai","BAMLCOA0CM":"igSpread","BAMLCOAOCM":"igSpread","BAMLC0A0CM":"igSpread","BAMLCOACM":"igSpread","BAMLHOAOHYM2":"hySpread","BAMLH0A0HYM2":"hySpread","BAMLEMHBHYCRPIOAS":"emSpread","PCC":"pcc","PCCE":"pcce","US10Y":"us10y","DFII10":"realYield","T5YIE":"breakeven","USO2Y":"us2y","US02Y":"us2y","US10Y-DE10Y":"spread10y","US1OY-DE10Y":"spread10y","DE10Y-DE02Y":"deCurve","DE10Y-DEO2Y":"deCurve","USO2Y-DEO2Y":"spread2y","US02Y-DE02Y":"spread2y","IT10Y-DE10Y":"btpBund","IT1OY-DE10Y":"btpBund","DE10Y":"de10y","DEO2Y":"de02y","DE02Y":"de02y","EURUSD":"eurusd","DXY":"dxy","USOIL":"oil","USOLL":"oil","HG1!/GC1!":"copperGold","HG 1!/GC1!":"copperGold","SPX":"spx","SX5E":"sx5e","11!":"euribor","USCPPMM":"ppiCoreMom","USCIRMM":"cpiCoreMom","INDEXSP:.INX":"spx","CL1!":"oil","I1!":"euribor"};
+  var rows=[],row=[],f="",q=false;
+  for(var i=0;i<text.length;i++){var c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
+    else { if(c==='"')q=true;
+      else if(c===','){row.push(f);f="";}
+      else if(c==='\n'){row.push(f);rows.push(row);row=[];f="";}
+      else if(c==='\r'){}
+      else f+=c; } }
+  if(f.length||row.length){row.push(f);rows.push(row);}
   var upd={};
-  var lines=text.split("\n");
-  var li=0;
-  while(li<lines.length){
-    var line=lines[li].split("\r").join("");
-    li++;
-    if(!line.startsWith('"'))continue;
-    var tk=line.substring(1).trim();
-    if(!tk||tk.toUpperCase()==="INDICATORI MACRO")continue;
-    var valStr="";
-    if(li<lines.length){
-      var vline=lines[li].split("\r").join("");
-      li++;
-      if(vline.startsWith('",')){valStr=vline.substring(2);}
-      else if(vline.startsWith('"')){valStr=vline.substring(1);}
-      else{valStr=vline;}
-      valStr=valStr.trim().replace(/^"+/,"").replace(/"+$/,"").trim();
-    }
-    tk=tk.toUpperCase();
-    var key=TM[tk];
-    if(!key)continue;
-    var val=extractNum(valStr);
-    if(key==="euribor"&&val!==null&&val>90)val=100-val;
-    if(key==="housingStarts"&&val!==null&&val<10)val=val*1000;
-    if(key==="bdi"&&val!==null&&val<100)val=val*1000;
-    if(key==="spx"&&val!==null&&val<1000)val=val*1000;
-    if(key==="sx5e"&&val!==null&&val<1000)val=val*1000;
-    if(key==="athi"&&val!==null&&val<10000)val=val*1000;
-    if(key==="atlo"&&val!==null&&val<10000)val=val*1000;
-    if(val!==null)upd[key]=val;
-  }
+  rows.forEach(function(r){
+    if(!r||r.length<3)return;
+    var tk=(r[0]||"").trim().toUpperCase(); if(!tk)return;
+    var key=TM[tk]; if(!key)return;
+    var val=itNum(r[2]); if(val===null)return;
+    if(key==="euribor"&&val>90)val=100-val;
+    if(key==="housingStarts"&&val<10)val=val*1000;
+    if(key==="bdi"&&val<100)val=val*1000;
+    if(key==="spx"&&val<1000)val=val*1000;
+    if(key==="sx5e"&&val<1000)val=val*1000;
+    if(key==="athi"&&val<10000)val=val*1000;
+    if(key==="atlo"&&val<10000)val=val*1000;
+    if((key==="igSpread"||key==="hySpread"||key==="emSpread")&&val>20)val=val/100;
+    upd[key]=val;
+  });
+  if(upd.de10y!=null&&upd.euCpi!=null)upd.euRealYield=Math.round((upd.de10y-upd.euCpi)*1000)/1000;
   return upd;
 }
 function parseMacroText(text){
@@ -1124,7 +1128,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v3</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v5</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
