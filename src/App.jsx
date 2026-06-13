@@ -980,7 +980,7 @@ export default function App(){
   }
   async function fetchEtfData(){
     const URL_SC="https://docs.google.com/spreadsheets/d/1lAR8AO3c_7UiCnhvz_FW-r97Wh21ZjzR5D6QSiGZtrk/export?format=csv&gid=0";
-    const URL_MACRO="https://docs.google.com/spreadsheets/d/1lAR8AO3c_7UiCnhvz_FW-r97Wh21ZjzR5D6QSiGZtrk/export?format=csv&gid=1320980954";
+    const URL_MACRO="https://docs.google.com/spreadsheets/d/1lAR8AO3c_7UiCnhvz_FW-r97Wh21ZjzR5D6QSiGZtrk/export?format=csv&gid=576696521";
     const URL_NAZ="https://docs.google.com/spreadsheets/d/1lAR8AO3c_7UiCnhvz_FW-r97Wh21ZjzR5D6QSiGZtrk/export?format=csv&gid=2023978700";
     autoSavePrevScores();
     setRefreshing(true);setRefreshMsg("Carico...");setFetchStatus({sc:null,naz:null,macro:null,rm:null,time:null});
@@ -1124,7 +1124,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v2</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v3</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
