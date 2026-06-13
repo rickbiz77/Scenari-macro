@@ -270,7 +270,7 @@ function calcLeadingScore(scenarioId){
   let tw=0,ts=0;
   cfg.forEach(({id,w,dir,good,bad})=>{
     const v=INDICATORS[id];
-    if(v!=null&&!isNaN(v)){ts+=signalScore(v,dir,good,bad)*w;tw+=w;}
+    if(v!=null&&!isNaN(v)){ts+=compositeSignal(id,dir,good,bad)*w;tw+=w;}
   });
   return tw>0?(ts/tw):null;
 }
@@ -293,6 +293,8 @@ function signalScore(v, dir, good, bad){
 }
 function compositeSignal(id, dir, good, bad){
   const nom=signalScore(INDICATORS[id],dir,good,bad);
+  const curr=INDICATORS[id], prev=PREV_INDICATORS[id];
+  if(prev==null||curr==null||isNaN(prev)||isNaN(curr)||curr===prev) return nom;
   const var_=variationScore(id,dir,good,bad);
   return nom*0.60 + var_*0.40;
 }
