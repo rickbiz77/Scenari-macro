@@ -1204,7 +1204,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v9</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v10</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
@@ -1511,9 +1511,8 @@ export default function App(){
           </div>
         </div>
 
-        <div style={{display:"flex",gap:12,marginBottom:12,alignItems:"stretch"}}>
-        {/* Saturazione di mercato (SPY) - meta sinistra */}
-        <div style={{flex:1,background:"#0f172a",border:"1px solid #1f2937",borderRadius:14,padding:20}}>
+        {/* Saturazione di mercato (SPY) */}
+        <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:14,padding:20,marginBottom:12}}>
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
             <span style={{fontSize:18}}>🌡️</span>
             <div style={{fontSize:13,fontWeight:800,color:"#f8fafc"}}>Saturazione di mercato (SPY)</div>
@@ -1538,52 +1537,61 @@ export default function App(){
                 </div>
               </div>}
         </div>
-        {/* GEX - meta destra */}
-        <div style={{flex:1,background:"#0f172a",border:"1px solid #1f2937",borderRadius:14,padding:20}}>
+        {/* GEX - barra orizzontale */}
+        <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:14,padding:20,marginBottom:12}}>
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-            <span style={{fontSize:18}}>🧧</span>
+            <span style={{fontSize:18}}>🧲</span>
             <div style={{fontSize:13,fontWeight:800,color:"#f8fafc"}}>GEX - Regime opzioni</div>
           </div>
-          <div style={{fontSize:10,color:"#6b7280",marginBottom:16}}>SPX companion vs Gamma Flip e wall</div>
+          <div style={{fontSize:10,color:"#6b7280",marginBottom:8}}>SPX companion vs Gamma Flip e wall</div>
           {!gexData
             ? <div style={{fontSize:11,color:"#6b7280"}}>Dati GEX non disponibili (sezione GEX del foglio).</div>
             : <div>
-                <div style={{position:"relative",height:240,width:"100%",marginBottom:6}}>
-                  <div style={{position:"absolute",left:6,top:0,bottom:0,width:14,borderRadius:7,background:"linear-gradient(to bottom, #10B981 0%, #10B981 "+gexData.flipTop+"%, #EF4444 "+gexData.flipTop+"%, #EF4444 100%)"}}/>
+                <div style={{position:"relative",height:60,marginTop:16,marginBottom:10}}>
+                  <div style={{position:"absolute",left:0,right:0,top:30,height:12,borderRadius:6,background:"linear-gradient(to right, #EF4444 0%, #EF4444 "+(100-gexData.flipTop)+"%, #10B981 "+(100-gexData.flipTop)+"%, #10B981 100%)"}}/>
                   {gexData.levels.map(function(l){
-                    var top=gexData.posPct(l.val);
-                    return <div key={l.key} style={{position:"absolute",left:0,right:0,top:"calc("+top+"% - 1px)"}}>
-                      <div style={{position:"absolute",left:0,width:26,height:2,background:l.col}}/>
-                      <div style={{position:"absolute",left:32,top:-7,fontSize:9,fontWeight:700,color:l.col,whiteSpace:"nowrap"}}>{l.label} <span style={{fontFamily:"monospace",color:"#94a3b8"}}>{Math.round(l.val)}</span></div>
-                    </div>;
+                    var left=100-gexData.posPct(l.val);
+                    return <div key={l.key} style={{position:"absolute",left:"calc("+left+"% - 1px)",top:26,width:2,height:20,background:l.col}}/>;
                   })}
-                  <div style={{position:"absolute",left:0,top:"calc("+gexData.posPct(gexData.spx)+"% - 9px)",zIndex:3}}>
-                    <div style={{position:"absolute",left:2,width:0,height:0,borderTop:"7px solid transparent",borderBottom:"7px solid transparent",borderLeft:"10px solid #fff"}}/>
-                    <div style={{position:"absolute",left:14,top:-2,background:"#fff",color:"#0f172a",fontFamily:"monospace",fontSize:9,fontWeight:800,padding:"1px 5px",borderRadius:3,whiteSpace:"nowrap"}}>SPX {Math.round(gexData.spx)}</div>
+                  <div style={{position:"absolute",left:"calc("+(100-gexData.posPct(gexData.spx))+"% - 24px)",top:-2,width:48,textAlign:"center",zIndex:3}}>
+                    <div style={{display:"inline-block",background:"#fff",color:"#0f172a",fontFamily:"monospace",fontSize:9,fontWeight:800,padding:"1px 5px",borderRadius:3,whiteSpace:"nowrap"}}>SPX {Math.round(gexData.spx)}</div>
+                    <div style={{margin:"2px auto 0",width:0,height:0,borderLeft:"6px solid transparent",borderRight:"6px solid transparent",borderTop:"9px solid #fff"}}/>
                   </div>
                 </div>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8,marginBottom:10,flexWrap:"wrap"}}>
+                <div style={{display:"flex",flexWrap:"wrap",gap:"4px 16px",marginBottom:12}}>
+                  {gexData.levels.map(function(l){
+                    var d=(gexData.spx-l.val)/l.val*100;
+                    return <div key={l.key} style={{display:"flex",alignItems:"center",gap:6,fontSize:9}}>
+                      <span style={{width:8,height:8,borderRadius:2,background:l.col,display:"inline-block"}}/>
+                      <span style={{color:"#94a3b8",fontWeight:700}}>{l.label}</span>
+                      <span style={{fontFamily:"monospace",color:"#e2e8f0"}}>{Math.round(l.val)}</span>
+                      <span style={{fontFamily:"monospace",color:"#6b7280"}}>({(d>=0?"+":"")+d.toFixed(2)}%)</span>
+                    </div>;
+                  })}
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
                   <div style={{background:gexData.regCol+"22",border:"1px solid "+gexData.regCol,borderRadius:8,padding:"5px 14px",fontSize:14,fontWeight:800,color:gexData.regCol,letterSpacing:1}}>{gexData.regime}</div>
                   <div style={{fontSize:10,color:"#94a3b8"}}>dal Gamma Flip <span style={{fontFamily:"monospace",fontWeight:700,color:"#e2e8f0"}}>{(gexData.flipDistPct>=0?"+":"")+gexData.flipDistPct.toFixed(2)}%</span> ({gexData.flipDistPct>=0?"sopra":"sotto"})</div>
-                </div>
-                <div style={{fontSize:10,color:"#94a3b8",marginBottom:6}}>Soglia più vicina: <span style={{fontWeight:700,color:gexData.nearest.col}}>{gexData.nearest.label}</span> <span style={{fontFamily:"monospace",color:"#e2e8f0"}}>{Math.round(gexData.nearest.val)}</span> ({(gexData.nearestPct>=0?"+":"")+gexData.nearestPct.toFixed(2)}%)</div>
-                {gexData.rangeW!=null && <div style={{fontSize:10,color:"#94a3b8",marginBottom:6}}>Range intraday implicito: <span style={{fontFamily:"monospace",color:"#e2e8f0"}}>{Math.round(gexData.rangeLo)}–{Math.round(gexData.rangeHi)}</span> (ampiezza {gexData.rangeW.toFixed(2)}%)</div>}
-                {gexData.pinWall && <div style={{fontSize:10,color:"#F59E0B",fontWeight:700,marginBottom:6,background:"#F59E0B14",border:"1px solid #F59E0B55",borderRadius:6,padding:"5px 8px"}}>⚠ Rischio pinning: SPX incollato a {gexData.pinWall.label} ({Math.round(gexData.pinWall.val)})</div>}
-                <div style={{marginTop:12,borderTop:"1px solid #1f2937",paddingTop:12}}>
-                  <div style={{fontSize:11,fontWeight:800,color:gexData.regCol,marginBottom:6}}>Consigli del giorno - {gexData.regime}</div>
-                  <div style={{fontSize:10,color:"#cbd5e1",lineHeight:1.5,marginBottom:8}}>{gexData.adv.intro}</div>
-                  <div style={{fontSize:9,fontWeight:700,color:"#94a3b8",marginBottom:3}}>Caratteristiche tipiche</div>
-                  <ul style={{margin:"0 0 8px 0",paddingLeft:16,fontSize:10,color:"#cbd5e1",lineHeight:1.5}}>
-                    {gexData.adv.car.map(function(t,i){return <li key={i}>{t}</li>;})}
-                  </ul>
-                  <div style={{fontSize:9,fontWeight:700,color:"#94a3b8",marginBottom:3}}>Approcci spesso utilizzati</div>
-                  <ul style={{margin:0,paddingLeft:16,fontSize:10,color:"#cbd5e1",lineHeight:1.5}}>
-                    {gexData.adv.app.map(function(t,i){return <li key={i}>{t}</li>;})}
-                  </ul>
+                  <div style={{fontSize:10,color:"#94a3b8"}}>Soglia vicina: <span style={{fontWeight:700,color:gexData.nearest.col}}>{gexData.nearest.label}</span> ({(gexData.nearestPct>=0?"+":"")+gexData.nearestPct.toFixed(2)}%)</div>
+                  {gexData.rangeW!=null && <div style={{fontSize:10,color:"#94a3b8"}}>Range implicito <span style={{fontFamily:"monospace",color:"#e2e8f0"}}>{Math.round(gexData.rangeLo)}–{Math.round(gexData.rangeHi)}</span> ({gexData.rangeW.toFixed(2)}%)</div>}
                 </div>
               </div>}
         </div>
-        </div>
+
+        {/* GEX - pinning + consigli */}
+        {gexData && <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:14,padding:20,marginBottom:12}}>
+          {gexData.pinWall && <div style={{fontSize:11,color:"#F59E0B",fontWeight:700,marginBottom:12,background:"#F59E0B14",border:"1px solid #F59E0B55",borderRadius:8,padding:"8px 12px"}}>⚠ Rischio pinning: SPX incollato a {gexData.pinWall.label} ({Math.round(gexData.pinWall.val)})</div>}
+          <div style={{fontSize:13,fontWeight:800,color:gexData.regCol,marginBottom:8}}>Consigli del giorno — {gexData.regime}</div>
+          <div style={{fontSize:11,color:"#cbd5e1",lineHeight:1.6,marginBottom:12}}>{gexData.adv.intro}</div>
+          <div style={{fontSize:10,fontWeight:700,color:"#94a3b8",marginBottom:4}}>Caratteristiche tipiche</div>
+          <ul style={{margin:"0 0 12px 0",paddingLeft:18,fontSize:11,color:"#cbd5e1",lineHeight:1.6}}>
+            {gexData.adv.car.map(function(t,i){return <li key={i}>{t}</li>;})}
+          </ul>
+          <div style={{fontSize:10,fontWeight:700,color:"#94a3b8",marginBottom:4}}>Approcci spesso utilizzati</div>
+          <ul style={{margin:0,paddingLeft:18,fontSize:11,color:"#cbd5e1",lineHeight:1.6}}>
+            {gexData.adv.app.map(function(t,i){return <li key={i}>{t}</li>;})}
+          </ul>
+        </div>}
 
         {/* Ripartizione continua */}
         <div style={{display:"flex",gap:8,marginBottom:4}}>
