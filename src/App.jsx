@@ -592,6 +592,55 @@ function calcRiskLead(){
   });
   return {score:tw>0?ts/tw:50,rows};
 }
+const REVERSAL_CFG=[
+ {id:"vix",src:"ind",label:"VIX",w:10,zones:[{op:"<=",thr:13,near:2,dir:"rib"},{op:">=",thr:30,near:5,dir:"rial"}]},
+ {id:"COR1M",src:"px",label:"COR1M (corr. implicita)",w:9,zones:[{op:"<=",thr:7.5,near:3,dir:"rib"},{op:">=",thr:40,near:8,dir:"rial"}]},
+ {id:"move",src:"ind",label:"MOVE",w:7,zones:[{op:"<=",thr:80,near:8,dir:"rib"},{op:">=",thr:130,near:15,dir:"rial"}]},
+ {id:"trin",src:"ind",label:"TRIN",w:8,zones:[{op:"<=",thr:0.5,near:0.15,dir:"rib"},{op:">=",thr:2.0,near:0.4,dir:"rial"}]},
+ {id:"pcc",src:"ind",label:"Put/Call totale",w:6,zones:[{op:"<=",thr:0.72,near:0.08,dir:"rib"},{op:">=",thr:1.23,near:0.15,dir:"rial"}]},
+ {id:"pcce",src:"ind",label:"Put/Call equity",w:8,zones:[{op:"<=",thr:0.55,near:0.07,dir:"rib"},{op:">=",thr:1.10,near:0.15,dir:"rial"}]},
+ {id:"vvixVix",src:"ind",label:"VVIX/VIX",w:6,zones:[{op:">=",thr:7,near:1,dir:"rib"},{op:"<=",thr:4,near:0.7,dir:"rial"}]},
+ {id:"igSpread",src:"ind",label:"IG spread",unit:"%",w:6,zones:[{op:"<=",thr:0.90,near:0.10,dir:"rib"},{op:">=",thr:1.75,near:0.25,dir:"rial"}]},
+ {id:"hySpread",src:"ind",label:"HY spread",unit:"%",w:8,zones:[{op:"<=",thr:3.0,near:0.4,dir:"rib"},{op:">=",thr:6.0,near:0.8,dir:"rial"}]},
+ {id:"emSpread",src:"ind",label:"EM HY spread",unit:"%",w:5,zones:[{op:"<=",thr:3.5,near:0.5,dir:"rib"},{op:">=",thr:6.5,near:0.8,dir:"rial"}]},
+ {id:"yieldCurve",src:"ind",label:"2s10s (T10Y2Y)",unit:"%",w:7,zones:[{op:"<=",thr:0,near:0.5,dir:"rib"}]},
+ {id:"us10y",src:"ind",label:"US10Y",unit:"%",w:5,zones:[{op:">=",thr:4.5,near:0.4,dir:"rib"}]},
+ {id:"dxy",src:"ind",label:"DXY",w:5,zones:[{op:">=",thr:105,near:3,dir:"rib"}]},
+ {id:"USDJPY",src:"px",label:"USDJPY (carry)",w:6,zones:[{op:">=",thr:160,near:3,dir:"rib"}]},
+];
+function zoneProx(v,op,thr,near){
+  if(v==null||isNaN(v))return 0;
+  if(op==="<="){ if(v<=thr){var d=(thr-v)/near;return Math.min(1,0.5+0.5*Math.min(1,d));} if(v<=thr+near){return 0.5*(1-(v-thr)/near);} return 0; }
+  else { if(v>=thr){var d2=(v-thr)/near;return Math.min(1,0.5+0.5*Math.min(1,d2));} if(v>=thr-near){return 0.5*(1-(thr-v)/near);} return 0; }
+}
+function fmtRev(c,v){ if(v==null||isNaN(v))return "\u2014"; var s=v.toFixed(2); return c.unit?(s+c.unit):s; }
+function calcReversal(getVal,daysMap){
+  daysMap=daysMap||{};
+  var ribSum=0,rialSum=0,ribW=0,rialW=0,rows=[];
+  REVERSAL_CFG.forEach(function(c){
+    var v=getVal(c.id,c.src);
+    var maxProx=0,active=null,hasRib=false,hasRial=false,thrParts=[];
+    c.zones.forEach(function(z){
+      if(z.dir==="rib")hasRib=true; else hasRial=true;
+      thrParts.push((z.op==="<="?"\u2264":"\u2265")+z.thr);
+      var pr=zoneProx(v,z.op,z.thr,z.near);
+      var dd=(daysMap[c.id]&&daysMap[c.id].dir===z.dir)?daysMap[c.id].days:0;
+      var bonus=(pr>=0.5)?Math.min(1+dd*0.12,2.2):1;
+      var contrib=pr*bonus*c.w;
+      if(z.dir==="rib")ribSum+=contrib; else rialSum+=contrib;
+      if(pr>maxProx){maxProx=pr; active=(pr>=0.5)?z.dir:active;}
+    });
+    if(hasRib)ribW+=c.w; if(hasRial)rialW+=c.w;
+    var dObj=daysMap[c.id];
+    rows.push({id:c.id,label:c.label,value:v,valueStr:fmtRev(c,v),thrTxt:thrParts.join(" / "),active:active,days:(dObj&&active&&dObj.dir===active)?dObj.days:0,prox:maxProx});
+  });
+  var scoreRib=ribW>0?Math.min(100,ribSum/ribW*100):0;
+  var scoreRial=rialW>0?Math.min(100,rialSum/rialW*100):0;
+  var headline=Math.max(scoreRib,scoreRial);
+  var direction=scoreRib>=scoreRial?"rib":"rial";
+  var label=headline<10?"nessun estremo rilevante":(direction==="rib"?"Rischio reversal RIBASSISTA":"Possibile reversal RIALZISTA");
+  return {scoreRib:scoreRib,scoreRial:scoreRial,headline:headline,direction:direction,label:label,rows:rows};
+}
 function calcAllocation(score,active){
   const t=Math.max(0,Math.min(100,score))/100;
   let pRisk=15+t*50;            // 15 (off) -> 40 (neutro) -> 65 (on)
@@ -696,8 +745,8 @@ function gateValue(ticker, riskMom, scenarioScores, national){
 function gateDot(col){return col==="#10B981"?"🟢":col==="#EAB308"?"🟡":col==="#F97316"?"🟠":"🔴";}
 function GatePill({ticker,riskMom,scenarioScores,national}){
   const g=gateValue(ticker,riskMom,scenarioScores,national);
-  return <div title={"🚦 "+g.label+" ("+Math.round(g.v)+")"} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
-    <div style={{fontSize:11,lineHeight:1}}>🚦</div>
+  return <div title={"GATE: "+g.label+" ("+Math.round(g.v)+")"} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
+    <div style={{fontSize:7,fontWeight:700,letterSpacing:0.5,color:"#6b7280",lineHeight:1}}>GATE</div>
     <span style={{fontSize:13,lineHeight:1}}>{gateDot(g.col)}</span>
   </div>;
 }
@@ -728,8 +777,8 @@ function satColor(v){return (v===null||v===undefined||isNaN(v))?"#6b7280":v>=75?
 function satDot(v){return (v===null||v===undefined||isNaN(v))?"⚪":v>=75?"🔴":v>=60?"🟠":v>=45?"🟡":"🟢";}
 function satLabel(v){return (v===null||v===undefined||isNaN(v))?"—":v>=75?"IPERCOMPRATO":v>=60?"TIRATO":v>=45?"CARICO":"SCARICO";}
 function SatPill({v}){
-  return <div title={"🌡️ Saturazione "+((v===null||v===undefined||isNaN(v))?"n/d":Math.round(v))} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
-    <div style={{fontSize:11,lineHeight:1}}>🌡️</div>
+  return <div title={"SAT: Saturazione "+((v===null||v===undefined||isNaN(v))?"n/d":Math.round(v))} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
+    <div style={{fontSize:7,fontWeight:700,letterSpacing:0.5,color:"#6b7280",lineHeight:1}}>SAT</div>
     <span style={{fontSize:13,lineHeight:1}}>{satDot(v)}</span>
   </div>;
 }
@@ -933,6 +982,8 @@ function parseMacroText(text){
 export default function App(){
   const [tab,setTab]=useState("scenarios");
   const [rlDetailOpen,setRlDetailOpen]=useState(null);
+  const [revDays,setRevDays]=useState(function(){try{return JSON.parse(localStorage.getItem("pr_reversal_days"))||{};}catch(e){return {};}});
+  const [revOpen,setRevOpen]=useState(false);
   const [sel,setSel]=useState(null);
   const [per,setPer]=useState("y");
   const [history,setHistory]=useState([]);
@@ -1132,7 +1183,7 @@ export default function App(){
     var levels=[
       {key:"cwd",label:"Call Wall dom",val:cwd,col:"#EF4444"},
       {key:"cwn",label:"Call Wall near",val:cwn,col:"#F97316"},
-      {key:"flip",label:"Gamma Flip",val:flip,col:"#F59E0B"},
+      {key:"flip",label:"Gamma Flip",val:flip,col:"#ffffff"},
       {key:"pwn",label:"Put Wall near",val:pwn,col:"#84CC16"},
       {key:"pwd",label:"Put Wall dom",val:pwd,col:"#10B981"}
     ];
@@ -1163,6 +1214,25 @@ export default function App(){
     };
     gexData={spx:spx,levels:levels,flipTop:posPct(flip),posPct:posPct,regime:regime,regCol:regCol,flipDistPct:flipDistPct,nearest:nearest,nearestPct:nearestPct,rangeLo:rangeLo,rangeHi:rangeHi,rangeW:rangeW,pinWall:pinWall,adv:adv};
   })();
+  // ===== Reversal: valori, persistenza giorni-in-zona, punteggio =====
+  var revPriceMap=buildPriceMap();
+  var getRevVal=function(id,src){return src==="px"?(revPriceMap[id]?revPriceMap[id].p:null):INDICATORS[id];};
+  useEffect(function(){
+    var today=new Date().toISOString().slice(0,10);
+    var next=Object.assign({},revDays),changed=false;
+    REVERSAL_CFG.forEach(function(c){
+      var v=getRevVal(c.id,c.src),dir=null;
+      c.zones.forEach(function(z){ if(zoneProx(v,z.op,z.thr,z.near)>=0.5)dir=z.dir; });
+      var prev=next[c.id]||{days:0,date:null,dir:null};
+      if(dir){
+        if(prev.date===today){ if(prev.dir!==dir){next[c.id]={days:1,date:today,dir:dir};changed=true;} }
+        else { var d=(prev.dir===dir?prev.days:0)+1; next[c.id]={days:d,date:today,dir:dir}; changed=true; }
+      } else { if(prev.days!==0||prev.dir!==null){ next[c.id]={days:0,date:today,dir:null}; changed=true; } }
+    });
+    if(changed){ setRevDays(next); try{localStorage.setItem("pr_reversal_days",JSON.stringify(next));}catch(e){} }
+  },[REVERSAL_CFG.map(function(c){return getRevVal(c.id,c.src);}).join(",")]);
+  var reversalData=calcReversal(getRevVal,revDays);
+  var revHeadCol=reversalData.headline>=66?"#EF4444":reversalData.headline>=33?"#F59E0B":"#10B981";
   // Scenario "attivo" deciso dai DATI: i 2 con punteggio finale più alto (niente flag a mano)
   const activeIds=[...SCENARIOS].sort((a,b)=>(finalMap[b.id]??-1)-(finalMap[a.id]??-1)).slice(0,2).map(s=>s.id);
   SCENARIOS.forEach(s=>{s.active=activeIds.includes(s.id);});
@@ -1205,7 +1275,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v11</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v13</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
@@ -1303,7 +1373,7 @@ export default function App(){
             <tr style={{borderBottom:"1px solid #1f2937"}}>
               <th style={{textAlign:"left",padding:"5px 8px",fontSize:9,color:"#4b5563"}}>TICKER</th>
               <th style={{textAlign:"left",padding:"5px 8px",fontSize:9,color:"#4b5563"}}>NOME</th>
-              <th style={{textAlign:"center",padding:"5px 6px",fontSize:9,color:"#F59E0B"}}>MOM / 🚦 / 🌡️</th>
+              <th style={{textAlign:"center",padding:"5px 6px",fontSize:9,color:"#F59E0B"}}>MOM / GATE / SAT</th>
               <th style={{textAlign:"right",padding:"5px 6px",fontSize:9,color:"#4b5563"}}>PREZZO</th>
               {PERS.map(p=> <th key={p.k} style={{textAlign:"right",padding:"5px 4px",fontSize:9,color:per===p.k?"#F59E0B":"#4b5563",fontWeight:per===p.k?700:500}}>{p.l}</th>)}
             </tr>
@@ -1515,7 +1585,6 @@ export default function App(){
         {/* Saturazione di mercato (SPY) */}
         <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:14,padding:20,marginBottom:12}}>
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-            <span style={{fontSize:18}}>🌡️</span>
             <div style={{fontSize:13,fontWeight:800,color:"#f8fafc"}}>Saturazione di mercato (SPY)</div>
           </div>
           <div style={{fontSize:10,color:"#6b7280",marginBottom:20}}>Quanto è tirato il mercato — z-score 30% · stocastico 25% · SMA200 18% · SMA50 12% · tempo 15%</div>
@@ -1538,6 +1607,46 @@ export default function App(){
                 </div>
               </div>}
         </div>
+        {/* Reversal */}
+        <div onClick={()=>setRevOpen(!revOpen)} style={{background:"#0f172a",border:"1px solid "+revHeadCol+"66",borderRadius:14,padding:20,marginBottom:12,cursor:"pointer"}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+            <span style={{fontSize:18}}>🔁</span>
+            <div style={{fontSize:13,fontWeight:800,color:"#f8fafc"}}>Reversal — rischio cambio regime</div>
+          </div>
+          <div style={{fontSize:10,color:"#6b7280",marginBottom:14}}>Estremi di sentiment/volatilità/credito + persistenza (giorni in zona)</div>
+          <div style={{display:"flex",alignItems:"baseline",justifyContent:"center",gap:6,marginBottom:8}}>
+            <span style={{fontFamily:"monospace",fontSize:36,fontWeight:900,color:revHeadCol}}>{Math.round(reversalData.headline)}</span>
+            <span style={{fontSize:13,color:"#6b7280"}}>/100</span>
+          </div>
+          <div style={{height:10,borderRadius:6,background:"linear-gradient(to right,#10B981,#F59E0B,#EF4444)",position:"relative"}}>
+            <div style={{position:"absolute",top:-4,left:"calc("+Math.max(0,Math.min(100,reversalData.headline))+"% - 7px)",width:14,height:18,background:"#fff",borderRadius:3,border:"2px solid #0f172a"}}/>
+          </div>
+          <div style={{textAlign:"center",fontSize:11,fontWeight:800,color:revHeadCol,marginTop:10,letterSpacing:1}}>{reversalData.label}</div>
+          <div style={{textAlign:"center",fontSize:8,color:"#6b7280",marginTop:6}}>{revOpen?"▾ chiudi dettaglio":"▸ vedi dettaglio"} · ribassista {Math.round(reversalData.scoreRib)} / rialzista {Math.round(reversalData.scoreRial)}</div>
+        </div>
+        {revOpen && <div style={{marginBottom:12}}>
+          <div style={{fontSize:9,color:"#6b7280",letterSpacing:2,marginBottom:8}}>REVERSAL — {reversalData.rows.length} INDICATORI · ordinati per prossimità</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {reversalData.rows.slice().sort(function(a,b){return b.prox-a.prox;}).map(function(r,i){
+              var stCol=r.active==="rib"?"#F59E0B":r.active==="rial"?"#10B981":"#374151";
+              var stTxt=r.active==="rib"?"compiacenza → rischio ribassista":r.active==="rial"?"panico → possibile bottom":"neutro";
+              return <div key={i} style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:10,padding:14}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6,gap:8,flexWrap:"wrap"}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#94a3b8"}}>{r.label}</div>
+                  <div style={{fontFamily:"monospace",fontSize:18,fontWeight:800,color:(r.value==null||isNaN(r.value))?"#374151":"#e2e8f0"}}>{r.valueStr}</div>
+                </div>
+                <div style={{display:"flex",gap:12,fontSize:9,color:"#4b5563",flexWrap:"wrap",alignItems:"center"}}>
+                  <div style={{color:stCol,fontWeight:700}}>{stTxt}</div>
+                  <div>soglie: <span style={{fontFamily:"monospace",color:"#94a3b8"}}>{r.thrTxt}</span></div>
+                  <div>giorni in zona: <span style={{fontFamily:"monospace",color:stCol,fontWeight:700}}>{r.days}</span></div>
+                </div>
+                <div style={{marginTop:6,height:4,borderRadius:2,background:"#1f2937"}}>
+                  <div style={{height:4,borderRadius:2,width:Math.round(r.prox*100)+"%",background:stCol}}/>
+                </div>
+              </div>;
+            })}
+          </div>
+        </div>}
         {/* GEX - barra orizzontale */}
         <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:14,padding:20,marginBottom:12}}>
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
