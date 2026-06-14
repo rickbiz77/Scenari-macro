@@ -246,6 +246,7 @@ const INDICATORS = {
   dtb3:3.59,       sofr:3.66,   euur:6.2,    eujvr:2.2,
   de10y:3.042,     eurusd:1.17192, sx5e:5881.51, eursyy:1.7,
   deCurve:0.397,   euRealYield:0.042, deppimm:2.5, deppiyy:-0.2,
+  spxComp:7430.7, gammaFlip:7513.42, putWallDom:7400.42, putWallNear:7430.42, callWallDom:7540.42, callWallNear:7460.42,
 };
 const PREV_INDICATORS = {
   yieldCurve:0.52, vix:18.45,  move:68.68,  ism:52.7,   ismNewOrders:53.5, ismEmployment:48.7, ismPricesPaid:78.3,
@@ -850,7 +851,7 @@ function itNum(s){
   var n=parseFloat(s); if(isNaN(n))return null; return neg?-n:n;
 }
 function parseIndicatoriCSV(text){
-  var TM={"T10Y2Y":"yieldCurve","VIX":"vix","MOVE":"move","USBCOI":"ism","USBCOL":"ism","USMNO":"ismNewOrders","USMEMP":"ismEmployment","USMPR":"ismPricesPaid","USCIR":"cpi","USPPIYY":"ppi","USCPCEPIAC":"pce","USCCEPIAC":"pce","USPPIMM":"ppiMom","USCPCEPIMM":"pceMom","USCCEPIMM":"pceMom","USIRMM":"cpiMom","DTB3":"dtb3","SOFR":"sofr","EUJVR":"eujvr","EUUR":"euur","EUIRYY":"euCpi","EUIRMM":"euCpiMom","EUCIRMM":"euCpiCoreMom","EUPPIMM":"euPpiMom","EUPPIYY":"euPpiYoy","DEPPIMM":"deppimm","DEPPIYY":"deppiyy","EURSYY":"eursyy","USRSYY":"retailSales","USHST":"housingStarts","M2SL/DXY":"m2Dxy","VVIX/VIX":"vvixVix","USNFP":"nfp","TRIN.NY":"trin","ATHI.NY":"athi","ATLO.NY":"atlo","USALOLITOAASTSAM":"lei","TRJEFFCRB":"crb","BDI":"bdi","DEIFOE":"ifo","USIJC":"jobless","USCFNAI":"cfnai","USCENAI":"cfnai","BAMLCOA0CM":"igSpread","BAMLCOAOCM":"igSpread","BAMLC0A0CM":"igSpread","BAMLCOACM":"igSpread","BAMLHOAOHYM2":"hySpread","BAMLH0A0HYM2":"hySpread","BAMLEMHBHYCRPIOAS":"emSpread","PCC":"pcc","PCCE":"pcce","US10Y":"us10y","DFII10":"realYield","T5YIE":"breakeven","USO2Y":"us2y","US02Y":"us2y","US10Y-DE10Y":"spread10y","US1OY-DE10Y":"spread10y","DE10Y-DE02Y":"deCurve","DE10Y-DEO2Y":"deCurve","USO2Y-DEO2Y":"spread2y","US02Y-DE02Y":"spread2y","IT10Y-DE10Y":"btpBund","IT1OY-DE10Y":"btpBund","DE10Y":"de10y","DEO2Y":"de02y","DE02Y":"de02y","EURUSD":"eurusd","DXY":"dxy","USOIL":"oil","USOLL":"oil","HG1!/GC1!":"copperGold","HG 1!/GC1!":"copperGold","SPX":"spx","SX5E":"sx5e","11!":"euribor","USCPPMM":"ppiCoreMom","USCIRMM":"cpiCoreMom","INDEXSP:.INX":"spx","CL1!":"oil","I1!":"euribor"};
+  var TM={"T10Y2Y":"yieldCurve","VIX":"vix","MOVE":"move","USBCOI":"ism","USBCOL":"ism","USMNO":"ismNewOrders","USMEMP":"ismEmployment","USMPR":"ismPricesPaid","USCIR":"cpi","USPPIYY":"ppi","USCPCEPIAC":"pce","USCCEPIAC":"pce","USPPIMM":"ppiMom","USCPCEPIMM":"pceMom","USCCEPIMM":"pceMom","USIRMM":"cpiMom","DTB3":"dtb3","SOFR":"sofr","EUJVR":"eujvr","EUUR":"euur","EUIRYY":"euCpi","EUIRMM":"euCpiMom","EUCIRMM":"euCpiCoreMom","EUPPIMM":"euPpiMom","EUPPIYY":"euPpiYoy","DEPPIMM":"deppimm","DEPPIYY":"deppiyy","EURSYY":"eursyy","USRSYY":"retailSales","USHST":"housingStarts","M2SL/DXY":"m2Dxy","VVIX/VIX":"vvixVix","USNFP":"nfp","TRIN.NY":"trin","ATHI.NY":"athi","ATLO.NY":"atlo","USALOLITOAASTSAM":"lei","TRJEFFCRB":"crb","BDI":"bdi","DEIFOE":"ifo","USIJC":"jobless","USCFNAI":"cfnai","USCENAI":"cfnai","BAMLCOA0CM":"igSpread","BAMLCOAOCM":"igSpread","BAMLC0A0CM":"igSpread","BAMLCOACM":"igSpread","BAMLHOAOHYM2":"hySpread","BAMLH0A0HYM2":"hySpread","BAMLEMHBHYCRPIOAS":"emSpread","PCC":"pcc","PCCE":"pcce","US10Y":"us10y","DFII10":"realYield","T5YIE":"breakeven","USO2Y":"us2y","US02Y":"us2y","US10Y-DE10Y":"spread10y","US1OY-DE10Y":"spread10y","DE10Y-DE02Y":"deCurve","DE10Y-DEO2Y":"deCurve","USO2Y-DEO2Y":"spread2y","US02Y-DE02Y":"spread2y","IT10Y-DE10Y":"btpBund","IT1OY-DE10Y":"btpBund","DE10Y":"de10y","DEO2Y":"de02y","DE02Y":"de02y","EURUSD":"eurusd","DXY":"dxy","USOIL":"oil","USOLL":"oil","HG1!/GC1!":"copperGold","HG 1!/GC1!":"copperGold","SPX":"spx","SX5E":"sx5e","11!":"euribor","USCPPMM":"ppiCoreMom","USCIRMM":"cpiCoreMom","INDEXSP:.INX":"spx","CL1!":"oil","I1!":"euribor","SPX COMPANION":"spxComp","GAMMA FLIP":"gammaFlip","PUT WALL DOMINANTE":"putWallDom","PUT WALL NEAREST":"putWallNear","CALL WALL DOMINANTE":"callWallDom","CALL WALL NEAREST":"callWallNear"};
   var rows=[],row=[],f="",q=false;
   for(var i=0;i<text.length;i++){var c=text[i];
     if(q){ if(c==='"'){ if(text[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
@@ -1119,6 +1120,48 @@ export default function App(){
   const riskLeadDetail=calcRiskLead();
   const riskLeadScore=riskLeadDetail.score;
   const riskOnOff=riskMomScore*0.6+riskLeadScore*0.4;
+  // ===== GEX: SPX companion vs Gamma Flip / wall =====
+  var gexData=null;
+  (function(){
+    var spx=INDICATORS.spxComp, flip=INDICATORS.gammaFlip,
+        cwd=INDICATORS.callWallDom, cwn=INDICATORS.callWallNear,
+        pwd=INDICATORS.putWallDom, pwn=INDICATORS.putWallNear;
+    var vals=[spx,flip,cwd,cwn,pwd,pwn];
+    if(vals.some(function(v){return v==null||isNaN(v);}))return;
+    var levels=[
+      {key:"cwd",label:"Call Wall dom",val:cwd,col:"#EF4444"},
+      {key:"cwn",label:"Call Wall near",val:cwn,col:"#F97316"},
+      {key:"flip",label:"Gamma Flip",val:flip,col:"#F59E0B"},
+      {key:"pwn",label:"Put Wall near",val:pwn,col:"#84CC16"},
+      {key:"pwd",label:"Put Wall dom",val:pwd,col:"#10B981"}
+    ];
+    var arr=levels.map(function(l){return l.val;}).concat([spx]);
+    var lo=Math.min.apply(null,arr), hi=Math.max.apply(null,arr);
+    var pad=(hi-lo)*0.10||1, min=lo-pad, max=hi+pad, span=max-min;
+    var posPct=function(v){return (max-v)/span*100;};
+    var regime=spx>=flip?"GEX+":"GEX-";
+    var regCol=spx>=flip?"#10B981":"#EF4444";
+    var flipDistPct=(spx-flip)/flip*100;
+    var nearest=levels[0], nd=Infinity;
+    levels.forEach(function(l){var d=Math.abs(spx-l.val);if(d<nd){nd=d;nearest=l;}});
+    var nearestPct=(spx-nearest.val)/nearest.val*100;
+    var walls=[{label:"Call Wall dom",val:cwd},{label:"Call Wall near",val:cwn},{label:"Put Wall dom",val:pwd},{label:"Put Wall near",val:pwn}];
+    var below=walls.filter(function(w){return w.val<spx;}).sort(function(a,b){return b.val-a.val;});
+    var above=walls.filter(function(w){return w.val>spx;}).sort(function(a,b){return a.val-b.val;});
+    var rangeLo=below.length?below[0].val:null, rangeHi=above.length?above[0].val:null;
+    var rangeW=(rangeLo!=null&&rangeHi!=null)?(rangeHi-rangeLo)/spx*100:null;
+    var pinWall=walls.filter(function(w){return Math.abs(spx-w.val)/w.val*100<=0.15;}).sort(function(a,b){return Math.abs(spx-a.val)-Math.abs(spx-b.val);})[0]||null;
+    var adv = regime==="GEX+" ? {
+      intro:"I market maker stabilizzano il mercato: se sale troppo lo riportano gi\u00f9, se scende troppo lo riportano su. Giornata probabilmente tranquilla, dentro un range.",
+      car:["Volatilit\u00e0 pi\u00f9 bassa.","Prezzi che tendono a tornare verso livelli di equilibrio.","Maggiore probabilit\u00e0 di movimenti laterali o di range."],
+      app:["Buy the dip su supporti importanti.","Vendere i rally vicino alle resistenze.","Strategie mean-reversion.","Target di profitto pi\u00f9 ravvicinati."]
+    } : {
+      intro:"I market maker amplificano i movimenti: se scende vendono ancora, se sale comprano ancora. Movimenti pi\u00f9 ampi e veloci, pi\u00f9 rischio di strappi e gap.",
+      car:["Volatilit\u00e0 pi\u00f9 elevata.","Trend pi\u00f9 aggressivi.","Possibili accelerazioni e squeeze."],
+      app:["Non comprare automaticamente il dip.","Seguire la direzione dominante del mercato.","Attendere conferme prima di entrare controtrend.","Ridurre la dimensione delle posizioni perch\u00e9 gli swing possono essere molto pi\u00f9 ampi."]
+    };
+    gexData={spx:spx,levels:levels,flipTop:posPct(flip),posPct:posPct,regime:regime,regCol:regCol,flipDistPct:flipDistPct,nearest:nearest,nearestPct:nearestPct,rangeLo:rangeLo,rangeHi:rangeHi,rangeW:rangeW,pinWall:pinWall,adv:adv};
+  })();
   // Scenario "attivo" deciso dai DATI: i 2 con punteggio finale più alto (niente flag a mano)
   const activeIds=[...SCENARIOS].sort((a,b)=>(finalMap[b.id]??-1)-(finalMap[a.id]??-1)).slice(0,2).map(s=>s.id);
   SCENARIOS.forEach(s=>{s.active=activeIds.includes(s.id);});
@@ -1161,7 +1204,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v8</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v9</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
@@ -1468,8 +1511,9 @@ export default function App(){
           </div>
         </div>
 
-        {/* Saturazione di mercato (SPY) */}
-        <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:14,padding:20,marginBottom:12}}>
+        <div style={{display:"flex",gap:12,marginBottom:12,alignItems:"stretch"}}>
+        {/* Saturazione di mercato (SPY) - meta sinistra */}
+        <div style={{flex:1,background:"#0f172a",border:"1px solid #1f2937",borderRadius:14,padding:20}}>
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
             <span style={{fontSize:18}}>🌡️</span>
             <div style={{fontSize:13,fontWeight:800,color:"#f8fafc"}}>Saturazione di mercato (SPY)</div>
@@ -1493,6 +1537,52 @@ export default function App(){
                   <div style={{fontFamily:"monospace",fontSize:36,fontWeight:900,color:satColor(spyMarketSat)}}>{Math.round(spyMarketSat)}<span style={{fontSize:14,color:"#6b7280"}}>/100</span></div>
                 </div>
               </div>}
+        </div>
+        {/* GEX - meta destra */}
+        <div style={{flex:1,background:"#0f172a",border:"1px solid #1f2937",borderRadius:14,padding:20}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+            <span style={{fontSize:18}}>🧧</span>
+            <div style={{fontSize:13,fontWeight:800,color:"#f8fafc"}}>GEX - Regime opzioni</div>
+          </div>
+          <div style={{fontSize:10,color:"#6b7280",marginBottom:16}}>SPX companion vs Gamma Flip e wall</div>
+          {!gexData
+            ? <div style={{fontSize:11,color:"#6b7280"}}>Dati GEX non disponibili (sezione GEX del foglio).</div>
+            : <div>
+                <div style={{position:"relative",height:240,width:"100%",marginBottom:6}}>
+                  <div style={{position:"absolute",left:6,top:0,bottom:0,width:14,borderRadius:7,background:"linear-gradient(to bottom, #10B981 0%, #10B981 "+gexData.flipTop+"%, #EF4444 "+gexData.flipTop+"%, #EF4444 100%)"}}/>
+                  {gexData.levels.map(function(l){
+                    var top=gexData.posPct(l.val);
+                    return <div key={l.key} style={{position:"absolute",left:0,right:0,top:"calc("+top+"% - 1px)"}}>
+                      <div style={{position:"absolute",left:0,width:26,height:2,background:l.col}}/>
+                      <div style={{position:"absolute",left:32,top:-7,fontSize:9,fontWeight:700,color:l.col,whiteSpace:"nowrap"}}>{l.label} <span style={{fontFamily:"monospace",color:"#94a3b8"}}>{Math.round(l.val)}</span></div>
+                    </div>;
+                  })}
+                  <div style={{position:"absolute",left:0,top:"calc("+gexData.posPct(gexData.spx)+"% - 9px)",zIndex:3}}>
+                    <div style={{position:"absolute",left:2,width:0,height:0,borderTop:"7px solid transparent",borderBottom:"7px solid transparent",borderLeft:"10px solid #fff"}}/>
+                    <div style={{position:"absolute",left:14,top:-2,background:"#fff",color:"#0f172a",fontFamily:"monospace",fontSize:9,fontWeight:800,padding:"1px 5px",borderRadius:3,whiteSpace:"nowrap"}}>SPX {Math.round(gexData.spx)}</div>
+                  </div>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8,marginBottom:10,flexWrap:"wrap"}}>
+                  <div style={{background:gexData.regCol+"22",border:"1px solid "+gexData.regCol,borderRadius:8,padding:"5px 14px",fontSize:14,fontWeight:800,color:gexData.regCol,letterSpacing:1}}>{gexData.regime}</div>
+                  <div style={{fontSize:10,color:"#94a3b8"}}>dal Gamma Flip <span style={{fontFamily:"monospace",fontWeight:700,color:"#e2e8f0"}}>{(gexData.flipDistPct>=0?"+":"")+gexData.flipDistPct.toFixed(2)}%</span> ({gexData.flipDistPct>=0?"sopra":"sotto"})</div>
+                </div>
+                <div style={{fontSize:10,color:"#94a3b8",marginBottom:6}}>Soglia più vicina: <span style={{fontWeight:700,color:gexData.nearest.col}}>{gexData.nearest.label}</span> <span style={{fontFamily:"monospace",color:"#e2e8f0"}}>{Math.round(gexData.nearest.val)}</span> ({(gexData.nearestPct>=0?"+":"")+gexData.nearestPct.toFixed(2)}%)</div>
+                {gexData.rangeW!=null && <div style={{fontSize:10,color:"#94a3b8",marginBottom:6}}>Range intraday implicito: <span style={{fontFamily:"monospace",color:"#e2e8f0"}}>{Math.round(gexData.rangeLo)}–{Math.round(gexData.rangeHi)}</span> (ampiezza {gexData.rangeW.toFixed(2)}%)</div>}
+                {gexData.pinWall && <div style={{fontSize:10,color:"#F59E0B",fontWeight:700,marginBottom:6,background:"#F59E0B14",border:"1px solid #F59E0B55",borderRadius:6,padding:"5px 8px"}}>⚠ Rischio pinning: SPX incollato a {gexData.pinWall.label} ({Math.round(gexData.pinWall.val)})</div>}
+                <div style={{marginTop:12,borderTop:"1px solid #1f2937",paddingTop:12}}>
+                  <div style={{fontSize:11,fontWeight:800,color:gexData.regCol,marginBottom:6}}>Consigli del giorno - {gexData.regime}</div>
+                  <div style={{fontSize:10,color:"#cbd5e1",lineHeight:1.5,marginBottom:8}}>{gexData.adv.intro}</div>
+                  <div style={{fontSize:9,fontWeight:700,color:"#94a3b8",marginBottom:3}}>Caratteristiche tipiche</div>
+                  <ul style={{margin:"0 0 8px 0",paddingLeft:16,fontSize:10,color:"#cbd5e1",lineHeight:1.5}}>
+                    {gexData.adv.car.map(function(t,i){return <li key={i}>{t}</li>;})}
+                  </ul>
+                  <div style={{fontSize:9,fontWeight:700,color:"#94a3b8",marginBottom:3}}>Approcci spesso utilizzati</div>
+                  <ul style={{margin:0,paddingLeft:16,fontSize:10,color:"#cbd5e1",lineHeight:1.5}}>
+                    {gexData.adv.app.map(function(t,i){return <li key={i}>{t}</li>;})}
+                  </ul>
+                </div>
+              </div>}
+        </div>
         </div>
 
         {/* Ripartizione continua */}
