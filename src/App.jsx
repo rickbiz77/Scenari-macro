@@ -594,17 +594,18 @@ function calcRiskLead(){
 }
 function calcAllocation(score,active){
   const t=Math.max(0,Math.min(100,score))/100;
-  let pRisk=15+t*55;
-  let pCash=35-t*30;
-  let pDef=100-pRisk-pCash;
-  if(active.includes("stagflation")||active.includes("debasement")){pDef+=10;pRisk-=10;}
-  if(active.includes("recession")){pCash+=10;pRisk-=10;}
-  if(active.includes("goldilocks")){pRisk+=10;pDef-=10;}
-  pRisk=Math.max(0,pRisk);pDef=Math.max(0,pDef);pCash=Math.max(0,pCash);
-  const sum=pRisk+pDef+pCash||1;
-  let rRisk=Math.round(pRisk/sum*100);
-  let rDef=Math.round(pDef/sum*100);
-  let rCash=100-rRisk-rDef;
+  let pRisk=15+t*50;            // 15 (off) -> 40 (neutro) -> 65 (on)
+  let pCash=30-t*20;            // 30 (off) -> 20 (neutro) -> 10 (on)
+  let pDef=100-pRisk-pCash;     // 55 (off) -> 40 (neutro) -> 25 (on)
+  if(active.includes("stagflation")||active.includes("debasement")){pDef+=5;pRisk-=5;}
+  if(active.includes("recession")){pCash+=5;pRisk-=5;}
+  if(active.includes("goldilocks")){pRisk+=5;pDef-=5;}
+  pRisk=Math.max(0,pRisk);pCash=Math.max(0,pCash);pDef=Math.max(0,pDef);
+  let rRisk=Math.round(pRisk/5)*5;
+  let rCash=Math.round(pCash/5)*5;
+  if(rRisk+rCash>100){rCash=Math.max(0,100-rRisk);}
+  let rDef=100-rRisk-rCash;
+  if(rDef<0){rDef=0;rCash=Math.max(0,100-rRisk);}
   return {pRisk:rRisk,pDef:rDef,pCash:rCash};
 }
 // ── GATE: 3 gruppi + nazionali, tutto su VARIAZIONI di prezzo (blend 70/30 come Risk Mom) ──
@@ -1204,7 +1205,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v10</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v11</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
@@ -1547,13 +1548,13 @@ export default function App(){
           {!gexData
             ? <div style={{fontSize:11,color:"#6b7280"}}>Dati GEX non disponibili (sezione GEX del foglio).</div>
             : <div>
-                <div style={{position:"relative",height:60,marginTop:16,marginBottom:10}}>
-                  <div style={{position:"absolute",left:0,right:0,top:30,height:12,borderRadius:6,background:"linear-gradient(to right, #EF4444 0%, #EF4444 "+(100-gexData.flipTop)+"%, #10B981 "+(100-gexData.flipTop)+"%, #10B981 100%)"}}/>
+                <div style={{position:"relative",height:60,marginTop:22,marginBottom:10}}>
+                  <div style={{position:"absolute",left:0,right:0,top:34,height:12,borderRadius:6,background:"linear-gradient(to right, #EF4444 0%, #EF4444 "+(100-gexData.flipTop)+"%, #10B981 "+(100-gexData.flipTop)+"%, #10B981 100%)"}}/>
                   {gexData.levels.map(function(l){
                     var left=100-gexData.posPct(l.val);
-                    return <div key={l.key} style={{position:"absolute",left:"calc("+left+"% - 1px)",top:26,width:2,height:20,background:l.col}}/>;
+                    return [<div key={l.key+"-v"} style={{position:"absolute",left:"calc("+left+"% - 18px)",top:13,width:36,textAlign:"center",fontSize:9,fontWeight:700,color:l.col,fontFamily:"monospace"}}>{Math.round(l.val)}</div>,<div key={l.key+"-t"} style={{position:"absolute",left:"calc("+left+"% - 1px)",top:30,width:2,height:18,background:l.col}}/>];
                   })}
-                  <div style={{position:"absolute",left:"calc("+(100-gexData.posPct(gexData.spx))+"% - 24px)",top:-2,width:48,textAlign:"center",zIndex:3}}>
+                  <div style={{position:"absolute",left:"calc("+(100-gexData.posPct(gexData.spx))+"% - 24px)",top:-8,width:48,textAlign:"center",zIndex:4}}>
                     <div style={{display:"inline-block",background:"#fff",color:"#0f172a",fontFamily:"monospace",fontSize:9,fontWeight:800,padding:"1px 5px",borderRadius:3,whiteSpace:"nowrap"}}>SPX {Math.round(gexData.spx)}</div>
                     <div style={{margin:"2px auto 0",width:0,height:0,borderLeft:"6px solid transparent",borderRight:"6px solid transparent",borderTop:"9px solid #fff"}}/>
                   </div>
