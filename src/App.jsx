@@ -504,17 +504,17 @@ const RISK_MOM_CFG=[
   {label:"SX5E",num:"SX5E",den:null,w:5,scale:2.5},
   {label:"NQ1!",num:"NQ1!",den:null,w:6,scale:3.0},
   {label:"RTY1!",num:"RTY1!",den:null,w:3,scale:3.0},
-  {label:"DFII10",num:null,den:null,snap:"realYield",w:10,scale:0.20,inv:true},
-  {label:"HY",num:null,den:null,snap:"hySpread",w:10,scale:0.30,inv:true},
+  {label:"DFII10",num:null,den:null,snap:"realYield",w:10,scale:0.40,inv:true},
+  {label:"HY",num:null,den:null,snap:"hySpread",w:10,scale:0.50,inv:true},
   {label:"HG/GC",num:"HG1!",den:"GC1!",w:7,scale:3.0},
-  {label:"HG/CL",num:"HG1!",den:"CL1!",w:7,scale:4.0},
+  {label:"HG/CL",num:"HG1!",den:"CL1!",w:7,scale:8.0},
   {label:"DXY",num:"DXY",den:null,w:8,scale:1.5,inv:true},
   {label:"USDJPY",num:"USDJPY",den:null,w:6,scale:1.5},
   {label:"AUDUSD",num:"AUDUSD",den:null,w:2,scale:1.5},
-  {label:"VIX",num:"VIX",den:null,w:6,scale:8.0,inv:true},
+  {label:"VIX",num:"VIX",den:null,w:6,scale:12.0,inv:true},
   {label:"MOVE",num:"MOVE",den:null,w:4,scale:8.0,inv:true},
   {label:"VVIX/VIX",num:"VVIX",den:"VIX",w:4,scale:6.0},
-  {label:"COR1M",num:"COR1M",den:null,w:8,scale:15.0,inv:true},
+  {label:"COR1M",num:"COR1M",den:null,w:8,scale:25.0,inv:true},
   {label:"BTC/GC",num:"BTCUSD",den:"GC1!",w:3,scale:5.0},
   {label:"XLY/XLP",num:"XLY",den:"XLP",w:3,scale:2.0},
 ];
@@ -550,48 +550,46 @@ function calcRiskMomDetail(){
   });
   return {score:tw>0?ts/tw:50,rows,morning};
 }
+const RISK_LEAD_CFG=[
+ {id:"ism",good:55,bad:44,w:4},{id:"ismNewOrders",good:55,bad:44,w:4},{id:"ismEmployment",good:53,bad:44,w:3},
+ {id:"lei",good:101.5,bad:98,w:4},{id:"cfnai",good:0.2,bad:-0.7,w:2},{id:"ifo",good:102,bad:85,w:2},
+ {id:"retailSales",good:5,bad:1,w:2},{id:"housingStarts",good:1500,bad:1100,w:2},{id:"nfp",good:250,bad:80,w:3},
+ {id:"jobless",good:180,bad:380,w:3},{id:"bdi",good:2500,bad:800,w:2},{id:"copperGold",good:0.003,bad:0.001,w:3},
+ {id:"vix",good:13,bad:35,w:7},{id:"move",good:70,bad:120,w:3},{id:"pcc",good:0.7,bad:1.2,w:2},{id:"pcce",good:0.6,bad:1.1,w:2},
+ {id:"hySpread",good:2.5,bad:7.0,w:6},{id:"igSpread",good:0.6,bad:2.0,w:3},{id:"emSpread",good:2.5,bad:6.0,w:2},
+ {id:"yieldCurve",good:1.5,bad:-0.5,w:4},
+ {id:"_deCurve",label:"DE Yield Curve (2.937-DE02Y)",good:1.5,bad:-0.3,w:3,valFn:I=>(I.de02y!=null&&I.us10y!=null)?2.937-I.de02y:null},
+ {id:"realYield",good:-0.5,bad:2.5,w:3},
+ {id:"us2y",good:2.0,bad:5.0,w:2},{id:"de02y",good:1.5,bad:4.0,w:2},{id:"euribor",good:1.5,bad:4.0,w:2},
+ {id:"spread2y",good:0.5,bad:2.0,w:1},{id:"spread10y",good:0.5,bad:2.0,w:1},
+ {id:"ppiMom",good:0.0,bad:0.5,w:3},{id:"ppiCoreMom",good:0.0,bad:0.4,w:2},{id:"cpiMom",good:0.1,bad:0.4,w:3},
+ {id:"cpiCoreMom",good:0.1,bad:0.35,w:3},{id:"pceMom",good:0.1,bad:0.35,w:3},{id:"ppi",good:1.5,bad:5.0,w:2},
+ {id:"cpi",good:2.0,bad:4.5,w:2},{id:"pce",good:2.0,bad:4.0,w:2},{id:"breakeven",good:2.0,bad:3.0,w:2},{id:"ismPricesPaid",good:40,bad:90,w:2},
+ {id:"m2Dxy",good:225,bad:200,w:3},{id:"dxy",good:90,bad:110,w:3},{id:"oil",good:50,bad:130,w:1},{id:"crb",good:260,bad:450,w:1},
+ {id:"euCpiMom",good:0.1,bad:0.4,w:1},{id:"euPpiMom",good:-0.5,bad:0.5,w:1},
+ {id:"_breadth",label:"Breadth ATHI/(ATHI+ATLO)",good:70,bad:30,w:5,valFn:I=>(I.athi!=null&&I.atlo!=null&&(I.athi+I.atlo)>0)?I.athi/(I.athi+I.atlo)*100:null},
+ {id:"trin",good:0.5,bad:1.5,w:3},{id:"spx",good:8000,bad:5000,w:5},
+ {id:"us10y",good:2.0,bad:4.0,inv:true,w:2},{id:"vvixVix",good:3,bad:7,inv:true,w:2},
+ {id:"dtb3",good:2.0,bad:3.5,inv:true,w:1},{id:"sofr",good:2.0,bad:3.5,inv:true,w:1},
+ {id:"euCpiCoreMom",good:0,bad:0.17,inv:true,w:1},{id:"euPpiYoy",good:-2,bad:1.5,inv:true,w:1},
+ {id:"btpBund",good:0.5,bad:0.9,inv:true,w:2},{id:"euur",good:5,bad:7,inv:true,w:1},
+ {id:"eujvr",good:0.5,bad:1.5,inv:true,w:1},{id:"de10y",good:1.0,bad:2.5,inv:true,w:1},
+ {id:"sx5e",good:3500,bad:6500,w:2},{id:"eursyy",good:0,bad:4.0,w:1},
+ {id:"deppimm",good:-0.5,bad:0.5,inv:true,w:1},{id:"deppiyy",good:-2,bad:4.0,inv:true,w:1},
+];
 function calcRiskLead(){
   const IND=INDICATORS;
-  function rs(v,riskOnGood,riskOnBad){
-    if(v==null||isNaN(v))return 50;
-    if(riskOnGood>riskOnBad){if(v>=riskOnGood)return 100;if(v<=riskOnBad)return 0;return((v-riskOnBad)/(riskOnGood-riskOnBad))*100;}
-    if(v<=riskOnGood)return 100;if(v>=riskOnBad)return 0;return((riskOnBad-v)/(riskOnBad-riskOnGood))*100;
-  }
-  const deCurve=(IND.de02y!=null&&IND.us10y!=null)?2.937-IND.de02y:null;
-  const scores=[
-    {s:rs(IND.ism,55,44),w:4},{s:rs(IND.ismNewOrders,55,44),w:4},{s:rs(IND.ismEmployment,53,44),w:3},
-    {s:rs(IND.lei,101.5,98),w:4},{s:rs(IND.cfnai,0.2,-0.7),w:2},{s:rs(IND.ifo,102,85),w:2},
-    {s:rs(IND.retailSales,5,1),w:2},{s:rs(IND.housingStarts,1500,1100),w:2},{s:rs(IND.nfp,250,80),w:3},
-    {s:rs(IND.jobless,180,380),w:3},{s:rs(IND.bdi,2500,800),w:2},{s:rs(IND.copperGold,0.003,0.001),w:3},
-    {s:rs(IND.vix,13,35),w:7},{s:rs(IND.move,70,120),w:3},{s:rs(IND.pcc,0.7,1.2),w:2},{s:rs(IND.pcce,0.6,1.1),w:2},
-    {s:rs(IND.hySpread,2.5,7.0),w:6},{s:rs(IND.igSpread,0.6,2.0),w:3},{s:rs(IND.emSpread,2.5,6.0),w:2},
-    {s:rs(IND.yieldCurve,1.5,-0.5),w:4},{s:rs(deCurve,1.5,-0.3),w:3},{s:rs(IND.realYield,-0.5,2.5),w:3},
-    {s:rs(IND.us2y,2.0,5.0),w:2},{s:rs(IND.de02y,1.5,4.0),w:2},{s:rs(IND.euribor,1.5,4.0),w:2},
-    {s:rs(IND.spread2y,0.5,2.0),w:1},{s:rs(IND.spread10y,0.5,2.0),w:1},
-    {s:rs(IND.ppiMom,0.0,0.5),w:3},{s:rs(IND.ppiCoreMom,0.0,0.4),w:2},{s:rs(IND.cpiMom,0.1,0.4),w:3},
-    {s:rs(IND.cpiCoreMom,0.1,0.35),w:3},{s:rs(IND.pceMom,0.1,0.35),w:3},{s:rs(IND.ppi,1.5,5.0),w:2},
-    {s:rs(IND.cpi,2.0,4.5),w:2},{s:rs(IND.pce,2.0,4.0),w:2},{s:rs(IND.breakeven,2.0,3.0),w:2},{s:rs(IND.ismPricesPaid,40,90),w:2},
-    {s:rs(IND.m2Dxy,225,200),w:3},{s:rs(IND.dxy,90,110),w:3},{s:rs(IND.oil,50,130),w:1},{s:rs(IND.crb,260,450),w:1},
-    {s:rs(IND.euCpiMom,0.1,0.4),w:1},{s:rs(IND.euPpiMom,-0.5,0.5),w:1},
-    {s:(IND.athi!=null&&IND.atlo!=null&&(IND.athi+IND.atlo)>0)?rs(IND.athi/(IND.athi+IND.atlo)*100,70,30):50,w:5},
-    {s:rs(IND.trin,0.5,1.5),w:3},{s:rs(IND.spx,8000,5000),w:5},
-    {s:rs(IND.us10y,2.0,4.0)*-1+100,w:2},
-    {s:IND.vvixVix!=null?rs(IND.vvixVix,3,7)*-1+100:50,w:2},
-    {s:IND.dtb3!=null?rs(IND.dtb3,2.0,3.5)*-1+100:50,w:1},
-    {s:IND.sofr!=null?rs(IND.sofr,2.0,3.5)*-1+100:50,w:1},
-    {s:IND.euCpiCoreMom!=null?rs(IND.euCpiCoreMom,0,0.17)*-1+100:50,w:1},
-    {s:IND.euPpiYoy!=null?rs(IND.euPpiYoy,-2,1.5)*-1+100:50,w:1},
-    {s:IND.btpBund!=null?rs(IND.btpBund,0.5,0.9)*-1+100:50,w:2},
-    {s:IND.euur!=null?rs(IND.euur,5,7)*-1+100:50,w:1},
-    {s:IND.eujvr!=null?rs(IND.eujvr,0.5,1.5)*-1+100:50,w:1},
-    {s:IND.de10y!=null?rs(IND.de10y,1.0,2.5)*-1+100:50,w:1},
-    {s:IND.sx5e!=null?rs(IND.sx5e,3500,6500):50,w:2},
-    {s:IND.eursyy!=null?rs(IND.eursyy,0,4.0):50,w:1},
-    {s:IND.deppimm!=null?rs(IND.deppimm,-0.5,0.5)*-1+100:50,w:1},
-    {s:IND.deppiyy!=null?rs(IND.deppiyy,-2,4.0)*-1+100:50,w:1},
-  ];
-  const totalW=scores.reduce((a,b)=>a+b.w,0);
-  return scores.reduce((a,b)=>a+b.s*b.w,0)/totalW;
+  function rs(v,g,b){ if(v==null||isNaN(v))return 50;
+    if(g>b){if(v>=g)return 100;if(v<=b)return 0;return((v-b)/(g-b))*100;}
+    if(v<=g)return 100;if(v>=b)return 0;return((b-v)/(b-g))*100; }
+  let tw=0,ts=0;const rows=[];
+  RISK_LEAD_CFG.forEach(c=>{
+    let v=c.valFn?c.valFn(IND):IND[c.id];
+    let sc=(v==null||isNaN(v))?50:(c.inv?100-rs(v,c.good,c.bad):rs(v,c.good,c.bad));
+    rows.push({id:c.id,label:c.label,value:v,score:sc,w:c.w,good:c.good,bad:c.bad,inv:!!c.inv});
+    ts+=sc*c.w;tw+=c.w;
+  });
+  return {score:tw>0?ts/tw:50,rows};
 }
 function calcAllocation(score,active){
   const t=Math.max(0,Math.min(100,score))/100;
@@ -932,6 +930,7 @@ function parseMacroText(text){
 // ── APP ─────────────────────────────────────────────────────────────
 export default function App(){
   const [tab,setTab]=useState("scenarios");
+  const [rlDetailOpen,setRlDetailOpen]=useState(null);
   const [sel,setSel]=useState(null);
   const [per,setPer]=useState("y");
   const [history,setHistory]=useState([]);
@@ -1117,7 +1116,8 @@ export default function App(){
 
   const riskMomDetail=calcRiskMomDetail();
   const riskMomScore=riskMomDetail.score;
-  const riskLeadScore=calcRiskLead();
+  const riskLeadDetail=calcRiskLead();
+  const riskLeadScore=riskLeadDetail.score;
   const riskOnOff=riskMomScore*0.6+riskLeadScore*0.4;
   // Scenario "attivo" deciso dai DATI: i 2 con punteggio finale più alto (niente flag a mano)
   const activeIds=[...SCENARIOS].sort((a,b)=>(finalMap[b.id]??-1)-(finalMap[a.id]??-1)).slice(0,2).map(s=>s.id);
@@ -1161,7 +1161,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v7</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v8</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
@@ -1366,8 +1366,8 @@ export default function App(){
       }
 
       const momCol=riskColor(riskMomScore),leadCol=riskColor(riskLeadScore),offCol=riskColor(riskOnOff);
-      function MiniBox({title,sub,score,col}){
-        return <div style={{flex:1,background:"#0f172a",border:"1px solid "+col+"66",borderRadius:12,padding:14}}>
+      function MiniBox({title,sub,score,col,onClick,open}){
+        return <div onClick={onClick} style={{flex:1,background:"#0f172a",border:"1px solid "+col+"66",borderRadius:12,padding:14,cursor:onClick?"pointer":"default"}}>
           <div style={{fontSize:12,fontWeight:800,color:"#f8fafc"}}>{title}</div>
           <div style={{fontSize:9,color:"#6b7280",marginBottom:10,minHeight:24}}>{sub}</div>
           <div style={{display:"flex",alignItems:"baseline",justifyContent:"center",gap:4,marginBottom:8}}>
@@ -1378,6 +1378,7 @@ export default function App(){
             <div style={{position:"absolute",top:-3,left:"calc("+Math.max(0,Math.min(100,score))+"% - 6px)",width:12,height:14,background:"#fff",borderRadius:3,border:"2px solid #0f172a"}}/>
           </div>
           <div style={{textAlign:"center",fontSize:9,fontWeight:700,color:col,marginTop:8,letterSpacing:1}}>{riskLabel(score)}</div>
+          {onClick&&<div style={{textAlign:"center",fontSize:8,color:"#6b7280",marginTop:6}}>{open?"\u25be chiudi dettaglio":"\u25b8 vedi dettaglio"}</div>}
         </div>;
       }
 
@@ -1386,26 +1387,66 @@ export default function App(){
 
         {/* Risk Mom (sx) + Risk Lead (dx) */}
         <div style={{display:"flex",gap:12,marginBottom:12}}>
-          <MiniBox title="Risk Mom" sub="70% daily + 30% settimanale (gate orario sempre attivo)" score={riskMomScore} col={momCol}/>
-          <MiniBox title="Risk Lead" sub="Score macro da 62 indicatori (leading, lento)" score={riskLeadScore} col={leadCol}/>
+          <MiniBox title="Risk Mom" sub="70% daily + 30% settimanale (gate orario sempre attivo)" score={riskMomScore} col={momCol} onClick={()=>setRlDetailOpen(rlDetailOpen==="mom"?null:"mom")} open={rlDetailOpen==="mom"}/>
+          <MiniBox title="Risk Lead" sub="Score macro da 60 indicatori (leading, lento)" score={riskLeadScore} col={leadCol} onClick={()=>setRlDetailOpen(rlDetailOpen==="lead"?null:"lead")} open={rlDetailOpen==="lead"}/>
         </div>
 
-        {/* Risk Mom — dettaglio 17 voci */}
-        <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:14,padding:14,marginBottom:12}}>
-          <div style={{fontSize:9,color:"#6b7280",letterSpacing:1,marginBottom:10}}>RISK MOM — 17 VOCI · score 0 = risk-off, 100 = risk-on</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:6}}>
-            {riskMomDetail.rows.map((r,idx)=>{
-              const sat=r.score!=null&&(r.score>=98||r.score<=2);
-              const col=r.score==null?"#6b7280":r.score>=66?"#10B981":r.score>=45?"#F59E0B":"#EF4444";
-              return (
-                <div key={idx} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#111827",borderRadius:8,padding:"5px 9px",border:sat?"1px solid #F59E0B":"1px solid #1f2937"}}>
-                  <span style={{fontSize:11,color:"#cbd5e1"}}>{r.label}{sat?" \u26a0\ufe0f":""}</span>
-                  <span style={{fontSize:12,fontWeight:800,fontFamily:"monospace",color:col}}>{r.score==null?"\u2014":Math.round(r.score)}</span>
+        {/* Dettaglio Risk Mom (al click sul riquadro) */}
+        {rlDetailOpen==="mom" && <div style={{marginBottom:12}}>
+          <div style={{fontSize:9,color:"#6b7280",letterSpacing:2,marginBottom:8}}>RISK MOM — 17 VOCI · score 0=risk-off, 100=risk-on</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {riskMomDetail.rows.map((r,i)=>{
+              const sCol=r.score==null?"#374151":scoreColor(r.score);
+              return <div key={i} style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:10,padding:14}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#94a3b8"}}>{r.label}</div>
+                  <div style={{fontFamily:"monospace",fontSize:20,fontWeight:800,color:sCol}}>{r.score==null?"\u2014":Math.round(r.score)}</div>
                 </div>
-              );
+                <div style={{display:"flex",gap:6,marginBottom:6}}>
+                  <div style={{flex:1,background:"#080812",borderRadius:6,padding:"5px 8px",textAlign:"center",border:"1px solid #F59E0B44"}}>
+                    <div style={{fontSize:7,color:"#F59E0B",marginBottom:2,fontWeight:700}}>SCORE</div>
+                    <div style={{fontFamily:"monospace",fontSize:11,fontWeight:700,color:sCol}}>{r.score==null?"\u2014":Math.round(r.score)}</div>
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:16,fontSize:9,color:"#4b5563",flexWrap:"wrap"}}>
+                  <div>Momentum: <span style={{fontFamily:"monospace",color:"#94a3b8",fontWeight:700}}>{r.pct==null?"\u2014":(r.pct>0?"+":"")+r.pct.toFixed(2)}</span></div>
+                  <div>Peso: <span style={{color:"#F59E0B",fontWeight:700}}>{r.w}</span></div>
+                  <div>Direzione: <span style={{color:"#94a3b8",fontWeight:700}}>{r.inv?"\u2193 inv (sale=risk-off)":"\u2191 dir (sale=risk-on)"}</span></div>
+                </div>
+              </div>;
             })}
           </div>
-        </div>
+        </div>}
+
+        {/* Dettaglio Risk Lead (al click sul riquadro) */}
+        {rlDetailOpen==="lead" && <div style={{marginBottom:12}}>
+          <div style={{fontSize:9,color:"#6b7280",letterSpacing:2,marginBottom:8}}>RISK LEAD — {riskLeadDetail.rows.length} INDICATORI · score 0=risk-off, 100=risk-on</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {[...riskLeadDetail.rows].sort((a,b)=>b.score-a.score).map((r,i)=>{
+              const meta=IND_META[r.id];
+              const label=r.label||(meta&&meta.label)||r.id;
+              const hasVal=r.value!=null&&!isNaN(r.value);
+              const valStr=hasVal?((meta&&meta.fmt)?meta.fmt(r.value):r.value.toFixed(2)):"\u2014";
+              const sCol=scoreColor(r.score);
+              return <div key={i} style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:10,padding:14}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8,gap:8,flexWrap:"wrap"}}>
+                  <div style={{fontSize:12,fontWeight:700,color:"#94a3b8"}}>{label}</div>
+                  <div style={{fontFamily:"monospace",fontSize:20,fontWeight:800,color:hasVal?"#e2e8f0":"#374151"}}>{valStr}</div>
+                </div>
+                <div style={{display:"flex",gap:6,marginBottom:6}}>
+                  <div style={{flex:1,background:"#080812",borderRadius:6,padding:"5px 8px",textAlign:"center",border:"1px solid #F59E0B44"}}>
+                    <div style={{fontSize:7,color:"#F59E0B",marginBottom:2,fontWeight:700}}>SCORE</div>
+                    <div style={{fontFamily:"monospace",fontSize:11,fontWeight:700,color:sCol}}>{Math.round(r.score)}</div>
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:16,fontSize:9,color:"#4b5563",flexWrap:"wrap"}}>
+                  <div>Peso: <span style={{color:"#F59E0B",fontWeight:700}}>{r.w}</span></div>
+                  <div>Direzione: <span style={{color:"#94a3b8",fontWeight:700}}>{r.inv?"\u2193 inv":"\u2191 dir"}</span></div>
+                </div>
+              </div>;
+            })}
+          </div>
+        </div>}
 
         {/* Risk On/Off composito a tutta larghezza */}
         <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:14,padding:20,marginBottom:12}}>
