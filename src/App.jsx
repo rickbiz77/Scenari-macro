@@ -614,6 +614,7 @@ function zoneProx(v,op,thr,near){
   else { if(v>=thr){var d2=(v-thr)/near;return Math.min(1,0.5+0.5*Math.min(1,d2));} if(v>=thr-near){return 0.5*(1-(thr-v)/near);} return 0; }
 }
 function fmtRev(c,v){ if(v==null||isNaN(v))return "\u2014"; var s=v.toFixed(2); return c.unit?(s+c.unit):s; }
+function revBarCol(p){ if(p==null||isNaN(p))return "#374151"; var x=Math.max(0,Math.min(1,p)); return "hsl("+Math.round(120*(1-x))+",72%,45%)"; }
 function calcReversal(getVal,daysMap){
   daysMap=daysMap||{};
   var ribSum=0,rialSum=0,ribW=0,rialW=0,rows=[];
@@ -1275,7 +1276,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v13</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v14</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
@@ -1545,7 +1546,7 @@ export default function App(){
               return <div key={i} style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:10,padding:14}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8,gap:8,flexWrap:"wrap"}}>
                   <div style={{fontSize:12,fontWeight:700,color:"#94a3b8"}}>{label}</div>
-                  <div style={{fontFamily:"monospace",fontSize:20,fontWeight:800,color:hasVal?"#e2e8f0":"#374151"}}>{valStr}</div>
+                  <div style={{fontFamily:"monospace",fontSize:20,fontWeight:800,color:hasVal?sCol:"#374151"}}>{valStr}</div>
                 </div>
                 <div style={{display:"flex",gap:6,marginBottom:6}}>
                   <div style={{flex:1,background:"#080812",borderRadius:6,padding:"5px 8px",textAlign:"center",border:"1px solid #F59E0B44"}}>
@@ -1603,7 +1604,7 @@ export default function App(){
                 </div>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12,marginTop:16,marginBottom:8}}>
                   <div style={{background:satColor(spyMarketSat)+"22",border:"1px solid "+satColor(spyMarketSat),borderRadius:8,padding:"6px 16px",fontSize:13,fontWeight:800,color:satColor(spyMarketSat),letterSpacing:1}}>{satLabel(spyMarketSat)}</div>
-                  <div style={{fontFamily:"monospace",fontSize:36,fontWeight:900,color:satColor(spyMarketSat)}}>{Math.round(spyMarketSat)}<span style={{fontSize:14,color:"#6b7280"}}>/100</span></div>
+                  <div style={{fontFamily:"monospace",fontSize:36,fontWeight:900,color:satColor(spyMarketSat)}}>{Math.round(spyMarketSat)}<span style={{fontSize:14,color:"#6b7280"}}>%</span></div>
                 </div>
               </div>}
         </div>
@@ -1616,7 +1617,7 @@ export default function App(){
           <div style={{fontSize:10,color:"#6b7280",marginBottom:14}}>Estremi di sentiment/volatilità/credito + persistenza (giorni in zona)</div>
           <div style={{display:"flex",alignItems:"baseline",justifyContent:"center",gap:6,marginBottom:8}}>
             <span style={{fontFamily:"monospace",fontSize:36,fontWeight:900,color:revHeadCol}}>{Math.round(reversalData.headline)}</span>
-            <span style={{fontSize:13,color:"#6b7280"}}>/100</span>
+            <span style={{fontSize:13,color:"#6b7280"}}>%</span>
           </div>
           <div style={{height:10,borderRadius:6,background:"linear-gradient(to right,#10B981,#F59E0B,#EF4444)",position:"relative"}}>
             <div style={{position:"absolute",top:-4,left:"calc("+Math.max(0,Math.min(100,reversalData.headline))+"% - 7px)",width:14,height:18,background:"#fff",borderRadius:3,border:"2px solid #0f172a"}}/>
@@ -1628,12 +1629,14 @@ export default function App(){
           <div style={{fontSize:9,color:"#6b7280",letterSpacing:2,marginBottom:8}}>REVERSAL — {reversalData.rows.length} INDICATORI · ordinati per prossimità</div>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             {reversalData.rows.slice().sort(function(a,b){return b.prox-a.prox;}).map(function(r,i){
-              var stCol=r.active==="rib"?"#F59E0B":r.active==="rial"?"#10B981":"#374151";
+              var barCol=revBarCol(r.prox);
+              var valCol=(r.value==null||isNaN(r.value))?"#374151":(r.active?barCol:"#94a3b8");
+              var stCol=r.active?barCol:"#6b7280";
               var stTxt=r.active==="rib"?"compiacenza → rischio ribassista":r.active==="rial"?"panico → possibile bottom":"neutro";
               return <div key={i} style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:10,padding:14}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6,gap:8,flexWrap:"wrap"}}>
                   <div style={{fontSize:12,fontWeight:700,color:"#94a3b8"}}>{r.label}</div>
-                  <div style={{fontFamily:"monospace",fontSize:18,fontWeight:800,color:(r.value==null||isNaN(r.value))?"#374151":"#e2e8f0"}}>{r.valueStr}</div>
+                  <div style={{fontFamily:"monospace",fontSize:18,fontWeight:800,color:valCol}}>{r.valueStr}</div>
                 </div>
                 <div style={{display:"flex",gap:12,fontSize:9,color:"#4b5563",flexWrap:"wrap",alignItems:"center"}}>
                   <div style={{color:stCol,fontWeight:700}}>{stTxt}</div>
@@ -1641,7 +1644,7 @@ export default function App(){
                   <div>giorni in zona: <span style={{fontFamily:"monospace",color:stCol,fontWeight:700}}>{r.days}</span></div>
                 </div>
                 <div style={{marginTop:6,height:4,borderRadius:2,background:"#1f2937"}}>
-                  <div style={{height:4,borderRadius:2,width:Math.round(r.prox*100)+"%",background:stCol}}/>
+                  <div style={{height:4,borderRadius:2,width:Math.round(r.prox*100)+"%",background:barCol}}/>
                 </div>
               </div>;
             })}
