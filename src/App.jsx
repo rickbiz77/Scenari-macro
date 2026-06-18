@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from "recharts";
 
 const LAST_UPDATE = "02/05/2026";
@@ -1085,8 +1085,7 @@ export default function App(){
     }
     return null;
   }
-  async function fetchEtfData(autoArg){
-    var isAuto=autoArg===true;   // l'auto-refresh passa true; il bottone passa un evento (≠true) → manuale
+  async function fetchEtfData(){
     const URL_SC="https://docs.google.com/spreadsheets/d/1lAR8AO3c_7UiCnhvz_FW-r97Wh21ZjzR5D6QSiGZtrk/export?format=csv&gid=0";
     const URL_MACRO="https://docs.google.com/spreadsheets/d/1lAR8AO3c_7UiCnhvz_FW-r97Wh21ZjzR5D6QSiGZtrk/export?format=csv&gid=576696521";
     const URL_NAZ="https://docs.google.com/spreadsheets/d/1lAR8AO3c_7UiCnhvz_FW-r97Wh21ZjzR5D6QSiGZtrk/export?format=csv&gid=2023978700";
@@ -1137,11 +1136,11 @@ export default function App(){
       if(macroCount>0){
         updKeys.forEach(function(k){
           if(macroUpd[k]!==INDICATORS[k]){          // shelvio nel precedente SOLO se cambia davvero
-            if(!isAuto)PREV_INDICATORS[k]=INDICATORS[k];  // auto-refresh: NON sposto il baseline (preserva la variazione giornaliera, 40% del leading)
+            PREV_INDICATORS[k]=INDICATORS[k];
             INDICATORS[k]=macroUpd[k];
           }
         });
-        if(!isAuto){try{localStorage.setItem("pr_prev_indicators",JSON.stringify(PREV_INDICATORS));}catch(e){}}
+        try{localStorage.setItem("pr_prev_indicators",JSON.stringify(PREV_INDICATORS));}catch(e){}
         try{localStorage.setItem("pr_indicators",JSON.stringify(INDICATORS));}catch(e){}
         stMacro=macroCount>=totalInd*0.5;
       }
@@ -1151,27 +1150,6 @@ export default function App(){
     setFetchStatus({sc:stSc,naz:stNaz,macro:stMacro,rm:stRm,time:ts});
     setRefreshing(false);setRenderKey(function(k){return k+1;});
   }
-
-  // ── AUTO-REFRESH: all'avvio, ogni 60s, e quando torno sull'app ──
-  const fetchRef=useRef(fetchEtfData); fetchRef.current=fetchEtfData;
-  const refreshingRef=useRef(refreshing); refreshingRef.current=refreshing;
-  useEffect(function(){
-    function tick(){
-      if(typeof document!=="undefined"&&document.hidden)return; // app in background: salto
-      if(refreshingRef.current)return;                          // refresh già in corso: salto
-      if(fetchRef.current)fetchRef.current(true);
-    }
-    tick();                                   // all'avvio / ad ogni montaggio
-    var iv=setInterval(tick,60000);           // ogni minuto
-    function onVis(){ if(typeof document==="undefined"||!document.hidden)tick(); }
-    if(typeof document!=="undefined")document.addEventListener("visibilitychange",onVis);
-    if(typeof window!=="undefined")window.addEventListener("focus",onVis);
-    return function(){
-      clearInterval(iv);
-      if(typeof document!=="undefined")document.removeEventListener("visibilitychange",onVis);
-      if(typeof window!=="undefined")window.removeEventListener("focus",onVis);
-    };
-  },[]);
 
   function applyMacroText(){
     if(!macroText.trim()){setRefreshMsg("Incolla prima il testo");return;}
@@ -1326,7 +1304,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v16</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v17</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
