@@ -162,19 +162,18 @@ const ETF_NAZIONALI=[
 const WEIGHTS={w:0.45,m:0.35,q:0.12,s:0.05,y:0.03};
 function calcMomScore(etf){let s=0,tw=0;Object.entries(WEIGHTS).forEach(([k,w])=>{if(etf[k]!=null){s+=etf[k]*w;tw+=w;}});return tw>0?s:null;}
 function calcScenarioMom(sc){
-  const merge=(sc.id==="debasement"||sc.id==="debasementbtc");
-  let ss;
-  if(merge){
-    const sc1={};sc.etfs.forEach(e=>{const v=calcMomScore(e);if(v!=null)sc1[e.t]=v;});
-    const used={};ss=[];
-    const pairAvg=(a,b)=>{const arr=[sc1[a],sc1[b]].filter(v=>v!=null);return arr.length?arr.reduce((x,y)=>x+y,0)/arr.length:null;};
-    const silver=pairAvg("SIL","SLV");used.SIL=used.SLV=true;if(silver!=null)ss.push(silver);
-    const gold=pairAvg("GDX","GLD");used.GDX=used.GLD=true;if(gold!=null)ss.push(gold);
-    sc.etfs.forEach(e=>{if(!used[e.t]){const v=sc1[e.t];if(v!=null)ss.push(v);}});
-  }else{
-    ss=sc.etfs.map(e=>calcMomScore(e)).filter(v=>v!=null);
-  }
-  return ss.length?ss.reduce((a,b)=>a+b,0)/ss.length:null;
+  // In Debasement e Debasement+BTC oro e argento (GLD,GDX,SLV,SIL) restano voci piene
+  // ma pesano METÀ ciascuna, per ridurre la sovraesposizione al metallo senza togliere voci.
+  const halfMetals=(sc.id==="debasement"||sc.id==="debasementbtc");
+  const HALF={SIL:true,SLV:true,GDX:true,GLD:true};
+  let sum=0,wsum=0;
+  sc.etfs.forEach(e=>{
+    const v=calcMomScore(e);
+    if(v==null)return;
+    const w=(halfMetals&&HALF[e.t])?0.5:1;
+    sum+=v*w; wsum+=w;
+  });
+  return wsum>0?sum/wsum:null;
 }
 function normArr(score,all){const vals=all.map(s=>s.raw).filter(v=>v!=null);const mn=Math.min(...vals),mx=Math.max(...vals);if(mx===mn)return 50;return((score-mn)/(mx-mn))*100;}
 function calcAllScores(){
@@ -1086,7 +1085,8 @@ export default function App(){
     }
     return null;
   }
-  async function fetchEtfData(){
+  async function fetchEtfData(autoArg){
+    var isAuto=autoArg===true;   // l'auto-refresh passa true; il bottone passa un evento (≠true) → manuale
     const URL_SC="https://docs.google.com/spreadsheets/d/1lAR8AO3c_7UiCnhvz_FW-r97Wh21ZjzR5D6QSiGZtrk/export?format=csv&gid=0";
     const URL_MACRO="https://docs.google.com/spreadsheets/d/1lAR8AO3c_7UiCnhvz_FW-r97Wh21ZjzR5D6QSiGZtrk/export?format=csv&gid=576696521";
     const URL_NAZ="https://docs.google.com/spreadsheets/d/1lAR8AO3c_7UiCnhvz_FW-r97Wh21ZjzR5D6QSiGZtrk/export?format=csv&gid=2023978700";
@@ -1137,11 +1137,11 @@ export default function App(){
       if(macroCount>0){
         updKeys.forEach(function(k){
           if(macroUpd[k]!==INDICATORS[k]){          // shelvio nel precedente SOLO se cambia davvero
-            PREV_INDICATORS[k]=INDICATORS[k];
+            if(!isAuto)PREV_INDICATORS[k]=INDICATORS[k];  // auto-refresh: NON sposto il baseline (preserva la variazione giornaliera, 40% del leading)
             INDICATORS[k]=macroUpd[k];
           }
         });
-        try{localStorage.setItem("pr_prev_indicators",JSON.stringify(PREV_INDICATORS));}catch(e){}
+        if(!isAuto){try{localStorage.setItem("pr_prev_indicators",JSON.stringify(PREV_INDICATORS));}catch(e){}}
         try{localStorage.setItem("pr_indicators",JSON.stringify(INDICATORS));}catch(e){}
         stMacro=macroCount>=totalInd*0.5;
       }
@@ -1159,7 +1159,7 @@ export default function App(){
     function tick(){
       if(typeof document!=="undefined"&&document.hidden)return; // app in background: salto
       if(refreshingRef.current)return;                          // refresh già in corso: salto
-      if(fetchRef.current)fetchRef.current();
+      if(fetchRef.current)fetchRef.current(true);
     }
     tick();                                   // all'avvio / ad ogni montaggio
     var iv=setInterval(tick,60000);           // ogni minuto
@@ -1326,7 +1326,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v15</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v16</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
