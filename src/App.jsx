@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from "recharts";
 
 const LAST_UPDATE = "02/05/2026";
@@ -161,7 +161,21 @@ const ETF_NAZIONALI=[
 // ── MOMENTUM (pesi aggressivi verso breve termine) ────────────────
 const WEIGHTS={w:0.45,m:0.35,q:0.12,s:0.05,y:0.03};
 function calcMomScore(etf){let s=0,tw=0;Object.entries(WEIGHTS).forEach(([k,w])=>{if(etf[k]!=null){s+=etf[k]*w;tw+=w;}});return tw>0?s:null;}
-function calcScenarioMom(sc){const ss=sc.etfs.map(e=>calcMomScore(e)).filter(v=>v!=null);return ss.length?ss.reduce((a,b)=>a+b,0)/ss.length:null;}
+function calcScenarioMom(sc){
+  const merge=(sc.id==="debasement"||sc.id==="debasementbtc");
+  let ss;
+  if(merge){
+    const sc1={};sc.etfs.forEach(e=>{const v=calcMomScore(e);if(v!=null)sc1[e.t]=v;});
+    const used={};ss=[];
+    const pairAvg=(a,b)=>{const arr=[sc1[a],sc1[b]].filter(v=>v!=null);return arr.length?arr.reduce((x,y)=>x+y,0)/arr.length:null;};
+    const silver=pairAvg("SIL","SLV");used.SIL=used.SLV=true;if(silver!=null)ss.push(silver);
+    const gold=pairAvg("GDX","GLD");used.GDX=used.GLD=true;if(gold!=null)ss.push(gold);
+    sc.etfs.forEach(e=>{if(!used[e.t]){const v=sc1[e.t];if(v!=null)ss.push(v);}});
+  }else{
+    ss=sc.etfs.map(e=>calcMomScore(e)).filter(v=>v!=null);
+  }
+  return ss.length?ss.reduce((a,b)=>a+b,0)/ss.length:null;
+}
 function normArr(score,all){const vals=all.map(s=>s.raw).filter(v=>v!=null);const mn=Math.min(...vals),mx=Math.max(...vals);if(mx===mn)return 50;return((score-mn)/(mx-mn))*100;}
 function calcAllScores(){
   const raw=SCENARIOS.map(s=>({id:s.id,raw:calcScenarioMom(s)}));
@@ -247,6 +261,7 @@ const INDICATORS = {
   de10y:3.042,     eurusd:1.17192, sx5e:5881.51, eursyy:1.7,
   deCurve:0.397,   euRealYield:0.042, deppimm:2.5, deppiyy:-0.2,
   spxComp:7430.7, gammaFlip:7513.42, putWallDom:7400.42, putWallNear:7430.42, callWallDom:7540.42, callWallNear:7460.42,
+  pocVol:7531, highVol:7561, lowVol:7528,
 };
 const PREV_INDICATORS = {
   yieldCurve:0.52, vix:18.45,  move:68.68,  ism:52.7,   ismNewOrders:53.5, ismEmployment:48.7, ismPricesPaid:78.3,
@@ -529,6 +544,7 @@ function riskMomBlend(e,morning){
   if(hasW)return w;
   return null;
 }
+function fmtMomVal(v){if(v==null||isNaN(v))return "\u2014";var a=Math.abs(v);if(a>=1000)return Math.round(v).toLocaleString("it-IT");if(a>=100)return v.toFixed(0);if(a>=10)return v.toFixed(1);if(a>=1)return v.toFixed(2);if(a>=0.01)return v.toFixed(3);return v.toFixed(4);}
 function calcRiskMomDetail(){
   const map=buildPriceMap();
   const morning=false;
@@ -546,7 +562,11 @@ function calcRiskMomDetail(){
     }
     let score=null;
     if(pct!=null&&!isNaN(pct)){let pp=c.inv?-pct:pct;score=Math.max(0,Math.min(100,50+(pp/c.scale)*50));}
-    rows.push({...c,pct,score});
+    let value=null;
+    if(c.snap){value=INDICATORS[c.snap];}
+    else if(c.den){const aa=map[c.num],bb=map[c.den];value=(aa&&bb&&aa.p!=null&&bb.p!=null&&!isNaN(aa.p)&&!isNaN(bb.p)&&bb.p!==0)?aa.p/bb.p:null;}
+    else{const a1=map[c.num];value=(a1&&a1.p!=null&&!isNaN(a1.p))?a1.p:null;}
+    rows.push({...c,pct,score,value});
     if(score!=null){ts+=score*c.w;tw+=c.w;}
   });
   return {score:tw>0?ts/tw:50,rows,morning};
@@ -902,7 +922,7 @@ function itNum(s){
   var n=parseFloat(s); if(isNaN(n))return null; return neg?-n:n;
 }
 function parseIndicatoriCSV(text){
-  var TM={"T10Y2Y":"yieldCurve","VIX":"vix","MOVE":"move","USBCOI":"ism","USBCOL":"ism","USMNO":"ismNewOrders","USMEMP":"ismEmployment","USMPR":"ismPricesPaid","USCIR":"cpi","USPPIYY":"ppi","USCPCEPIAC":"pce","USCCEPIAC":"pce","USPPIMM":"ppiMom","USCPCEPIMM":"pceMom","USCCEPIMM":"pceMom","USIRMM":"cpiMom","DTB3":"dtb3","SOFR":"sofr","EUJVR":"eujvr","EUUR":"euur","EUIRYY":"euCpi","EUIRMM":"euCpiMom","EUCIRMM":"euCpiCoreMom","EUPPIMM":"euPpiMom","EUPPIYY":"euPpiYoy","DEPPIMM":"deppimm","DEPPIYY":"deppiyy","EURSYY":"eursyy","USRSYY":"retailSales","USHST":"housingStarts","M2SL/DXY":"m2Dxy","VVIX/VIX":"vvixVix","USNFP":"nfp","TRIN.NY":"trin","ATHI.NY":"athi","ATLO.NY":"atlo","USALOLITOAASTSAM":"lei","TRJEFFCRB":"crb","BDI":"bdi","DEIFOE":"ifo","USIJC":"jobless","USCFNAI":"cfnai","USCENAI":"cfnai","BAMLCOA0CM":"igSpread","BAMLCOAOCM":"igSpread","BAMLC0A0CM":"igSpread","BAMLCOACM":"igSpread","BAMLHOAOHYM2":"hySpread","BAMLH0A0HYM2":"hySpread","BAMLEMHBHYCRPIOAS":"emSpread","PCC":"pcc","PCCE":"pcce","US10Y":"us10y","DFII10":"realYield","T5YIE":"breakeven","USO2Y":"us2y","US02Y":"us2y","US10Y-DE10Y":"spread10y","US1OY-DE10Y":"spread10y","DE10Y-DE02Y":"deCurve","DE10Y-DEO2Y":"deCurve","USO2Y-DEO2Y":"spread2y","US02Y-DE02Y":"spread2y","IT10Y-DE10Y":"btpBund","IT1OY-DE10Y":"btpBund","DE10Y":"de10y","DEO2Y":"de02y","DE02Y":"de02y","EURUSD":"eurusd","DXY":"dxy","USOIL":"oil","USOLL":"oil","HG1!/GC1!":"copperGold","HG 1!/GC1!":"copperGold","SPX":"spx","SX5E":"sx5e","11!":"euribor","USCPPMM":"ppiCoreMom","USCIRMM":"cpiCoreMom","INDEXSP:.INX":"spx","CL1!":"oil","I1!":"euribor","SPX COMPANION":"spxComp","GAMMA FLIP":"gammaFlip","PUT WALL DOMINANTE":"putWallDom","PUT WALL NEAREST":"putWallNear","CALL WALL DOMINANTE":"callWallDom","CALL WALL NEAREST":"callWallNear"};
+  var TM={"T10Y2Y":"yieldCurve","VIX":"vix","MOVE":"move","USBCOI":"ism","USBCOL":"ism","USMNO":"ismNewOrders","USMEMP":"ismEmployment","USMPR":"ismPricesPaid","USCIR":"cpi","USPPIYY":"ppi","USCPCEPIAC":"pce","USCCEPIAC":"pce","USPPIMM":"ppiMom","USCPCEPIMM":"pceMom","USCCEPIMM":"pceMom","USIRMM":"cpiMom","DTB3":"dtb3","SOFR":"sofr","EUJVR":"eujvr","EUUR":"euur","EUIRYY":"euCpi","EUIRMM":"euCpiMom","EUCIRMM":"euCpiCoreMom","EUPPIMM":"euPpiMom","EUPPIYY":"euPpiYoy","DEPPIMM":"deppimm","DEPPIYY":"deppiyy","EURSYY":"eursyy","USRSYY":"retailSales","USHST":"housingStarts","M2SL/DXY":"m2Dxy","VVIX/VIX":"vvixVix","USNFP":"nfp","TRIN.NY":"trin","ATHI.NY":"athi","ATLO.NY":"atlo","USALOLITOAASTSAM":"lei","TRJEFFCRB":"crb","BDI":"bdi","DEIFOE":"ifo","USIJC":"jobless","USCFNAI":"cfnai","USCENAI":"cfnai","BAMLCOA0CM":"igSpread","BAMLCOAOCM":"igSpread","BAMLC0A0CM":"igSpread","BAMLCOACM":"igSpread","BAMLHOAOHYM2":"hySpread","BAMLH0A0HYM2":"hySpread","BAMLEMHBHYCRPIOAS":"emSpread","PCC":"pcc","PCCE":"pcce","US10Y":"us10y","DFII10":"realYield","T5YIE":"breakeven","USO2Y":"us2y","US02Y":"us2y","US10Y-DE10Y":"spread10y","US1OY-DE10Y":"spread10y","DE10Y-DE02Y":"deCurve","DE10Y-DEO2Y":"deCurve","USO2Y-DEO2Y":"spread2y","US02Y-DE02Y":"spread2y","IT10Y-DE10Y":"btpBund","IT1OY-DE10Y":"btpBund","DE10Y":"de10y","DEO2Y":"de02y","DE02Y":"de02y","EURUSD":"eurusd","DXY":"dxy","USOIL":"oil","USOLL":"oil","HG1!/GC1!":"copperGold","HG 1!/GC1!":"copperGold","SPX":"spx","SX5E":"sx5e","11!":"euribor","USCPPMM":"ppiCoreMom","USCIRMM":"cpiCoreMom","INDEXSP:.INX":"spx","CL1!":"oil","I1!":"euribor","SPX COMPANION":"spxComp","GAMMA FLIP":"gammaFlip","PUT WALL DOMINANTE":"putWallDom","PUT WALL NEAREST":"putWallNear","CALL WALL DOMINANTE":"callWallDom","CALL WALL NEAREST":"callWallNear","POC VOLUME":"pocVol","HIGH VOL LINE":"highVol","LOW VOL LINE":"lowVol"};
   var rows=[],row=[],f="",q=false;
   for(var i=0;i<text.length;i++){var c=text[i];
     if(q){ if(c==='"'){ if(text[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
@@ -1132,6 +1152,27 @@ export default function App(){
     setRefreshing(false);setRenderKey(function(k){return k+1;});
   }
 
+  // ── AUTO-REFRESH: all'avvio, ogni 60s, e quando torno sull'app ──
+  const fetchRef=useRef(fetchEtfData); fetchRef.current=fetchEtfData;
+  const refreshingRef=useRef(refreshing); refreshingRef.current=refreshing;
+  useEffect(function(){
+    function tick(){
+      if(typeof document!=="undefined"&&document.hidden)return; // app in background: salto
+      if(refreshingRef.current)return;                          // refresh già in corso: salto
+      if(fetchRef.current)fetchRef.current();
+    }
+    tick();                                   // all'avvio / ad ogni montaggio
+    var iv=setInterval(tick,60000);           // ogni minuto
+    function onVis(){ if(typeof document==="undefined"||!document.hidden)tick(); }
+    if(typeof document!=="undefined")document.addEventListener("visibilitychange",onVis);
+    if(typeof window!=="undefined")window.addEventListener("focus",onVis);
+    return function(){
+      clearInterval(iv);
+      if(typeof document!=="undefined")document.removeEventListener("visibilitychange",onVis);
+      if(typeof window!=="undefined")window.removeEventListener("focus",onVis);
+    };
+  },[]);
+
   function applyMacroText(){
     if(!macroText.trim()){setRefreshMsg("Incolla prima il testo");return;}
     const upd=parseMacroText(macroText);
@@ -1188,7 +1229,12 @@ export default function App(){
       {key:"pwn",label:"Put Wall near",val:pwn,col:"#84CC16"},
       {key:"pwd",label:"Put Wall dom",val:pwd,col:"#10B981"}
     ];
-    var arr=levels.map(function(l){return l.val;}).concat([spx]);
+    var poc=INDICATORS.pocVol, hiv=INDICATORS.highVol, lov=INDICATORS.lowVol;
+    var volLevels=[];
+    if(poc!=null&&!isNaN(poc))volLevels.push({key:"poc",label:"POC volume",val:poc,col:"#EAB308"});
+    if(hiv!=null&&!isNaN(hiv))volLevels.push({key:"hiv",label:"High vol",val:hiv,col:"#38BDF8"});
+    if(lov!=null&&!isNaN(lov))volLevels.push({key:"lov",label:"Low vol",val:lov,col:"#38BDF8"});
+    var arr=levels.map(function(l){return l.val;}).concat([spx]).concat(volLevels.map(function(l){return l.val;}));
     var lo=Math.min.apply(null,arr), hi=Math.max.apply(null,arr);
     var pad=(hi-lo)*0.10||1, min=lo-pad, max=hi+pad, span=max-min;
     var posPct=function(v){return (max-v)/span*100;};
@@ -1213,7 +1259,11 @@ export default function App(){
       car:["Volatilit\u00e0 pi\u00f9 elevata.","Trend pi\u00f9 aggressivi.","Possibili accelerazioni e squeeze."],
       app:["Non comprare automaticamente il dip.","Seguire la direzione dominante del mercato.","Attendere conferme prima di entrare controtrend.","Ridurre la dimensione delle posizioni perch\u00e9 gli swing possono essere molto pi\u00f9 ampi."]
     };
-    gexData={spx:spx,levels:levels,flipTop:posPct(flip),posPct:posPct,regime:regime,regCol:regCol,flipDistPct:flipDistPct,nearest:nearest,nearestPct:nearestPct,rangeLo:rangeLo,rangeHi:rangeHi,rangeW:rangeW,pinWall:pinWall,adv:adv};
+    var allMk=levels.concat(volLevels).map(function(l){return {key:l.key,val:l.val,col:l.col,left:100-posPct(l.val)};});
+    allMk.sort(function(a,b){return a.left-b.left;});
+    var laneEnds=[]; var MINGAP=10;
+    allMk.forEach(function(mk){var lane=0;while(lane<laneEnds.length&&(mk.left-laneEnds[lane])<MINGAP){lane++;}if(lane===laneEnds.length)laneEnds.push(mk.left);else laneEnds[lane]=mk.left;mk.lane=lane;});
+    gexData={spx:spx,levels:levels,volLevels:volLevels,barMarkers:allMk,barLanes:Math.max(1,laneEnds.length),flipTop:posPct(flip),posPct:posPct,regime:regime,regCol:regCol,flipDistPct:flipDistPct,nearest:nearest,nearestPct:nearestPct,rangeLo:rangeLo,rangeHi:rangeHi,rangeW:rangeW,pinWall:pinWall,adv:adv};
   })();
   // ===== Reversal: valori, persistenza giorni-in-zona, punteggio =====
   var revPriceMap=buildPriceMap();
@@ -1276,7 +1326,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v14</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v15</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
@@ -1512,10 +1562,11 @@ export default function App(){
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             {riskMomDetail.rows.map((r,i)=>{
               const sCol=r.score==null?"#374151":scoreColor(r.score);
+              const hasVal=r.value!=null&&!isNaN(r.value);
               return <div key={i} style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:10,padding:14}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8,gap:8,flexWrap:"wrap"}}>
                   <div style={{fontSize:12,fontWeight:700,color:"#94a3b8"}}>{r.label}</div>
-                  <div style={{fontFamily:"monospace",fontSize:20,fontWeight:800,color:sCol}}>{r.score==null?"\u2014":Math.round(r.score)}</div>
+                  <div style={{fontFamily:"monospace",fontSize:20,fontWeight:800,color:hasVal?sCol:"#374151"}}>{hasVal?fmtMomVal(r.value):"\u2014"}</div>
                 </div>
                 <div style={{display:"flex",gap:6,marginBottom:6}}>
                   <div style={{flex:1,background:"#080812",borderRadius:6,padding:"5px 8px",textAlign:"center",border:"1px solid #F59E0B44"}}>
@@ -1660,11 +1711,11 @@ export default function App(){
           {!gexData
             ? <div style={{fontSize:11,color:"#6b7280"}}>Dati GEX non disponibili (sezione GEX del foglio).</div>
             : <div>
-                <div style={{position:"relative",height:60,marginTop:22,marginBottom:10}}>
+                <div style={{position:"relative",height:(54+gexData.barLanes*13),marginTop:22,marginBottom:10}}>
                   <div style={{position:"absolute",left:0,right:0,top:34,height:12,borderRadius:6,background:"linear-gradient(to right, #EF4444 0%, #EF4444 "+(100-gexData.flipTop)+"%, #10B981 "+(100-gexData.flipTop)+"%, #10B981 100%)"}}/>
-                  {gexData.levels.map(function(l){
-                    var left=100-gexData.posPct(l.val);
-                    return [<div key={l.key+"-v"} style={{position:"absolute",left:"calc("+left+"% - 18px)",top:13,width:36,textAlign:"center",fontSize:9,fontWeight:700,color:l.col,fontFamily:"monospace"}}>{Math.round(l.val)}</div>,<div key={l.key+"-t"} style={{position:"absolute",left:"calc("+left+"% - 1px)",top:30,width:2,height:18,background:l.col}}/>];
+                  {gexData.barMarkers.map(function(m){
+                    var labTop=50+m.lane*13;
+                    return [<div key={m.key+"-t"} style={{position:"absolute",left:"calc("+m.left+"% - 1px)",top:34,width:2,height:(labTop-34),background:m.col,opacity:0.85}}/>,<div key={m.key+"-v"} style={{position:"absolute",left:"calc("+m.left+"% - 18px)",top:labTop,width:36,textAlign:"center",fontSize:9,fontWeight:700,color:m.col,fontFamily:"monospace"}}>{Math.round(m.val)}</div>];
                   })}
                   <div style={{position:"absolute",left:"calc("+(100-gexData.posPct(gexData.spx))+"% - 24px)",top:-8,width:48,textAlign:"center",zIndex:4}}>
                     <div style={{display:"inline-block",background:"#fff",color:"#0f172a",fontFamily:"monospace",fontSize:9,fontWeight:800,padding:"1px 5px",borderRadius:3,whiteSpace:"nowrap"}}>SPX {Math.round(gexData.spx)}</div>
@@ -1672,7 +1723,7 @@ export default function App(){
                   </div>
                 </div>
                 <div style={{display:"flex",flexWrap:"wrap",gap:"4px 16px",marginBottom:12}}>
-                  {gexData.levels.map(function(l){
+                  {gexData.levels.concat(gexData.volLevels).map(function(l){
                     var d=(gexData.spx-l.val)/l.val*100;
                     return <div key={l.key} style={{display:"flex",alignItems:"center",gap:6,fontSize:9}}>
                       <span style={{width:8,height:8,borderRadius:2,background:l.col,display:"inline-block"}}/>
