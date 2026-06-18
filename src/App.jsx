@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from "recharts";
 
 const LAST_UPDATE = "02/05/2026";
@@ -279,6 +279,24 @@ const PREV_INDICATORS = {
   de10y:3.042,     eurusd:1.17192, sx5e:5881.51, eursyy:1.7,
   deCurve:0.397,   euRealYield:0.042, deppimm:2.5, deppiyy:-0.2,
 };
+
+// Baseline ancorato al GIORNO: il "precedente" (PREV_INDICATORS) si congela UNA volta al
+// primo aggiornamento di ogni giornata (= ultimi valori di ieri) e NON si muove piu' fino a
+// domani, qualunque sia il numero di refresh (manuali o automatici). Cosi' la variazione e'
+// sempre "valore di adesso - chiusura di ieri", indipendente da quante volte rinfreschi.
+function ensureDailyBaseline(keys){
+  var today;
+  try{today=new Date().toISOString().slice(0,10);}catch(e){today="";}
+  var baseDate=null;
+  try{baseDate=localStorage.getItem("pr_baseline_date");}catch(e){}
+  if(baseDate===today)return false;             // baseline di oggi gia' fissato: non lo tocco
+  (keys||Object.keys(INDICATORS)).forEach(function(k){
+    if(INDICATORS[k]!=null&&!isNaN(INDICATORS[k]))PREV_INDICATORS[k]=INDICATORS[k];
+  });
+  try{localStorage.setItem("pr_prev_indicators",JSON.stringify(PREV_INDICATORS));}catch(e){}
+  try{localStorage.setItem("pr_baseline_date",today);}catch(e){}
+  return true;
+}
 
 function calcLeadingScore(scenarioId){
   const cfg=SCENARIO_CFG[scenarioId];if(!cfg)return null;
@@ -1134,13 +1152,8 @@ export default function App(){
       var updKeys=Object.keys(macroUpd).filter(function(k){return INDICATORS.hasOwnProperty(k);});
       var macroCount=new Set(updKeys).size;
       if(macroCount>0){
-        updKeys.forEach(function(k){
-          if(macroUpd[k]!==INDICATORS[k]){          // shelvio nel precedente SOLO se cambia davvero
-            PREV_INDICATORS[k]=INDICATORS[k];
-            INDICATORS[k]=macroUpd[k];
-          }
-        });
-        try{localStorage.setItem("pr_prev_indicators",JSON.stringify(PREV_INDICATORS));}catch(e){}
+        ensureDailyBaseline(updKeys);              // baseline = chiusura di ieri, fisso per tutta la giornata
+        updKeys.forEach(function(k){INDICATORS[k]=macroUpd[k];});   // aggiorno SEMPRE i valori correnti
         try{localStorage.setItem("pr_indicators",JSON.stringify(INDICATORS));}catch(e){}
         stMacro=macroCount>=totalInd*0.5;
       }
@@ -1151,18 +1164,36 @@ export default function App(){
     setRefreshing(false);setRenderKey(function(k){return k+1;});
   }
 
+  // ── AUTO-REFRESH: all'avvio, ogni 60s, e quando torno sull'app ──
+  // Sicuro: il baseline e' giornaliero (ensureDailyBaseline), quindi 1 o 100 refresh
+  // al giorno NON spostano il "precedente" e non falsano la variazione/leading.
+  const fetchRef=useRef(fetchEtfData); fetchRef.current=fetchEtfData;
+  const refreshingRef=useRef(refreshing); refreshingRef.current=refreshing;
+  useEffect(function(){
+    function tick(){
+      if(typeof document!=="undefined"&&document.hidden)return; // in background: salto
+      if(refreshingRef.current)return;                          // refresh gia' in corso: salto
+      if(fetchRef.current)fetchRef.current();
+    }
+    tick();                                   // all'avvio / ad ogni montaggio
+    var iv=setInterval(tick,60000);           // ogni minuto
+    function onVis(){if(typeof document==="undefined"||!document.hidden)tick();}
+    if(typeof document!=="undefined")document.addEventListener("visibilitychange",onVis);
+    if(typeof window!=="undefined")window.addEventListener("focus",onVis);
+    return function(){
+      clearInterval(iv);
+      if(typeof document!=="undefined")document.removeEventListener("visibilitychange",onVis);
+      if(typeof window!=="undefined")window.removeEventListener("focus",onVis);
+    };
+  },[]);
+
   function applyMacroText(){
     if(!macroText.trim()){setRefreshMsg("Incolla prima il testo");return;}
     const upd=parseMacroText(macroText);
     const n=Object.keys(upd).length;
     if(n===0){setRefreshMsg("Nessun ticker riconosciuto");return;}
-    Object.keys(upd).forEach(function(k){
-      if(upd[k]!==INDICATORS[k]){                   // shelvio nel precedente SOLO se cambia davvero
-        if(INDICATORS[k]!==undefined)PREV_INDICATORS[k]=INDICATORS[k];
-        INDICATORS[k]=upd[k];
-      }
-    });
-    try{localStorage.setItem("pr_prev_indicators",JSON.stringify(PREV_INDICATORS));}catch(e){}
+    ensureDailyBaseline(Object.keys(upd));        // stesso baseline giornaliero del refresh
+    Object.keys(upd).forEach(function(k){INDICATORS[k]=upd[k];});
     if(!window._macroUpdated)window._macroUpdated={};
     Object.keys(upd).forEach(function(k){window._macroUpdated[k]=true;});
     const SKIP_IND=["tedSpread","euRealYield","deCurve"];
@@ -1304,7 +1335,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v17</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v18</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
