@@ -607,13 +607,13 @@ const RISK_LEAD_CFG=[
  {id:"euCpiMom",good:0.1,bad:0.4,w:1},{id:"euPpiMom",good:-0.5,bad:0.5,w:1},
  {id:"_breadth",label:"Breadth ATHI/(ATHI+ATLO)",good:70,bad:30,w:5,valFn:I=>(I.athi!=null&&I.atlo!=null&&(I.athi+I.atlo)>0)?I.athi/(I.athi+I.atlo)*100:null},
  {id:"trin",good:0.5,bad:1.5,w:3},{id:"spx",good:8000,bad:5000,w:5},
- {id:"us10y",good:2.0,bad:4.0,inv:true,w:2},{id:"vvixVix",good:3,bad:7,inv:true,w:2},
- {id:"dtb3",good:2.0,bad:3.5,inv:true,w:1},{id:"sofr",good:2.0,bad:3.5,inv:true,w:1},
- {id:"euCpiCoreMom",good:0,bad:0.17,inv:true,w:1},{id:"euPpiYoy",good:-2,bad:1.5,inv:true,w:1},
- {id:"btpBund",good:0.5,bad:0.9,inv:true,w:2},{id:"euur",good:5,bad:7,inv:true,w:1},
- {id:"eujvr",good:0.5,bad:1.5,inv:true,w:1},{id:"de10y",good:1.0,bad:2.5,inv:true,w:1},
- {id:"sx5e",good:3500,bad:6500,w:2},{id:"eursyy",good:0,bad:4.0,w:1},
- {id:"deppimm",good:-0.5,bad:0.5,inv:true,w:1},{id:"deppiyy",good:-2,bad:4.0,inv:true,w:1},
+ {id:"us10y",good:2.0,bad:4.0,w:2},{id:"vvixVix",good:7,bad:3,w:2},
+ {id:"dtb3",good:2.0,bad:3.5,w:1},{id:"sofr",good:2.0,bad:3.5,w:1},
+ {id:"euCpiCoreMom",good:0,bad:0.17,w:1},{id:"euPpiYoy",good:-2,bad:1.5,w:1},
+ {id:"btpBund",good:0.5,bad:0.9,w:2},{id:"euur",good:5,bad:7,w:1},
+ {id:"eujvr",good:0.5,bad:1.5,w:1},{id:"de10y",good:1.0,bad:2.5,w:1},
+ {id:"sx5e",good:6500,bad:3500,w:2},{id:"eursyy",good:4.0,bad:0,w:1},
+ {id:"deppimm",good:-0.5,bad:0.5,w:1},{id:"deppiyy",good:-2,bad:4.0,w:1},
 ];
 function calcRiskLead(){
   const IND=INDICATORS;
@@ -710,7 +710,7 @@ function driverContrib(ticker, weight, scale){
 // ticker -> scenari di appartenenza (base del gruppo 3 = score finale più alto fra questi)
 const TICKER_SCENARIOS=(function(){var m={};SCENARIOS.forEach(function(s){s.etfs.forEach(function(e){(m[e.t]=m[e.t]||[]).push(s.id);});});return m;})();
 // gruppo 2 (risk-off / difensivi), ITA incluso
-const GATE_RISKOFF=new Set(["XLU","XLP","XLV","TLT","IEF","SHY","BIL","LQD","VDST","FXF","ITA","SCHD","VTV"]);
+const GATE_RISKOFF=new Set(["XLU","XLP","XLV","TLT","IEF","SHY","BIL","LQD","VDST","FXF","SCHD"]);
 // gruppo 3 (scenario-dipendenti): pesi driver per ticker {dol=dollaro, oil=petrolio, cina, tsy=treasury}
 const GROUP3_W={
   GLD:{dol:20,tsy:15}, SLV:{dol:20,tsy:15}, GDX:{dol:20,tsy:15}, SIL:{dol:20,tsy:15},
@@ -899,7 +899,7 @@ function parseScenariCSV(text){
     if(sid){ flush(); cur=sid; inRiskMom=false; etfs=[]; continue; }
     if(inRiskMom){
       if(f==="TICKER"||!cols[0]||!cols[2])continue;
-      var rm={t:cols[0].trim(),n:cols[1]||"",p:pPx(cols[2]),g:pPct(cols[3]),w:pPct(cols[4]),m:pPct(cols[5]),q:pPct(cols[6]),s:pPct(cols[7]),y:pPct(cols[8])};
+      var rm={t:cols[0].trim(),n:cols[1]||"",p:pPx(cols[2]),g:pPct(cols[3]),w:pPct(cols[4]),m:pPct(cols[5]),q:pPct(cols[6]),s:pPct(cols[7]),y:pPct(cols[8]),st:pPct(cols[12]),s200:pPct(cols[13]),z:pPct(cols[14]),s50:pPct(cols[15])};
       if(rm.p)riskMom.push(rm);
       continue;
     }
@@ -1335,7 +1335,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v18</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v22</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
@@ -1616,7 +1616,7 @@ export default function App(){
                 </div>
                 <div style={{display:"flex",gap:16,fontSize:9,color:"#4b5563",flexWrap:"wrap"}}>
                   <div>Peso: <span style={{color:"#F59E0B",fontWeight:700}}>{r.w}</span></div>
-                  <div>Direzione: <span style={{color:"#94a3b8",fontWeight:700}}>{r.inv?"\u2193 inv":"\u2191 dir"}</span></div>
+                  <div>Direzione: <span style={{color:"#94a3b8",fontWeight:700}}>{(r.good>r.bad?!r.inv:r.inv)?"\u2191 dir":"\u2193 inv"}</span></div>
                 </div>
               </div>;
             })}
@@ -2779,9 +2779,9 @@ const IND_META = {
     desc:"Vendite al dettaglio eurozona anno su anno — consumi EU.\n🔴 <0% = recessione consumi\n🟡 0-2% = moderato\n🟢 >3% = consumi robusti → BCE hawkish"},
   trin:        {label:"TRIN Arms Trading Index",        fmt:v=>`${v.toFixed(3)}`,
     desc:"Arms Index — relazione tra volumi e breadth NYSE.\n🔵 <0.5 = euforia (contrarian bearish)\n🟢 0.5-1.0 = risk-on\n🟡 1.0-1.5 = neutro\n🔴 >1.5 = risk-off / panico"},
-  athi:        {label:"NYSE AT TODAY'S HIGH",           fmt:v=>`${(v/1000).toFixed(0)}K`,
+  athi:        {label:"NYSE AT TODAY'S HIGH",           fmt:v=>`${Math.round(v)}`,
     desc:"Numero titoli NYSE che fanno nuovi massimi oggi — breadth rialzista.\n🔴 <100K = breadth deteriora\n🟡 100-300K = normale\n🟢 >300K = breadth forte"},
-  atlo:        {label:"NYSE AT TODAY'S LOW",            fmt:v=>`${(v/1000).toFixed(0)}K`,
+  atlo:        {label:"NYSE AT TODAY'S LOW",            fmt:v=>`${Math.round(v)}`,
     desc:"Numero titoli NYSE che fanno nuovi minimi oggi — breadth ribassista.\n🟢 <100K = pressione ribassista bassa\n🟡 100-250K = normale\n🔴 >300K = deterioramento breadth"},
   spx:         {label:"S&P 500",                        fmt:v=>`${v.toFixed(0)}`,
     desc:"Indice azionario USA — barometro risk-on globale.\n🔴 <5000 = risk-off\n🟡 5000-6500 = neutro/bull\n🟢 >6500 = bull market"},
