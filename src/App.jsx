@@ -596,7 +596,7 @@ const RISK_LEAD_CFG=[
  {id:"vix",good:13,bad:35,w:7},{id:"move",good:70,bad:120,w:3},{id:"pcc",good:0.7,bad:1.2,w:2},{id:"pcce",good:0.6,bad:1.1,w:2},
  {id:"hySpread",good:2.5,bad:7.0,w:6},{id:"igSpread",good:0.6,bad:2.0,w:3},{id:"emSpread",good:2.5,bad:6.0,w:2},
  {id:"yieldCurve",good:1.5,bad:-0.5,w:4},
- {id:"_deCurve",label:"DE Yield Curve (2.937-DE02Y)",good:1.5,bad:-0.3,w:3,valFn:I=>(I.de02y!=null&&I.us10y!=null)?2.937-I.de02y:null},
+ {id:"_deCurve",label:"DE Yield Curve (DE10Y-DE02Y)",good:1.5,bad:-0.3,w:3,valFn:I=>(I.de10y!=null&&I.de02y!=null)?(I.de10y-I.de02y):null},
  {id:"realYield",good:-0.5,bad:2.5,w:3},
  {id:"us2y",good:2.0,bad:5.0,w:2},{id:"de02y",good:1.5,bad:4.0,w:2},{id:"euribor",good:1.5,bad:4.0,w:2},
  {id:"spread2y",good:0.5,bad:2.0,w:1},{id:"spread10y",good:0.5,bad:2.0,w:1},
@@ -605,7 +605,8 @@ const RISK_LEAD_CFG=[
  {id:"cpi",good:2.0,bad:4.5,w:2},{id:"pce",good:2.0,bad:4.0,w:2},{id:"breakeven",good:2.0,bad:3.0,w:2},{id:"ismPricesPaid",good:40,bad:90,w:2},
  {id:"m2Dxy",good:225,bad:200,w:3},{id:"dxy",good:90,bad:110,w:3},{id:"oil",good:50,bad:130,w:1},{id:"crb",good:260,bad:450,w:1},
  {id:"euCpiMom",good:0.1,bad:0.4,w:1},{id:"euPpiMom",good:-0.5,bad:0.5,w:1},
- {id:"_breadth",label:"Breadth ATHI/(ATHI+ATLO)",good:70,bad:30,w:5,valFn:I=>(I.athi!=null&&I.atlo!=null&&(I.athi+I.atlo)>0)?I.athi/(I.athi+I.atlo)*100:null},
+ {id:"athi",label:"NYSE nuovi massimi",good:300,bad:100,w:3},
+ {id:"atlo",label:"NYSE nuovi minimi",good:100,bad:300,w:2},
  {id:"trin",good:0.5,bad:1.5,w:3},{id:"spx",good:8000,bad:5000,w:5},
  {id:"us10y",good:2.0,bad:4.0,w:2},{id:"vvixVix",good:7,bad:3,w:2},
  {id:"dtb3",good:2.0,bad:3.5,w:1},{id:"sofr",good:2.0,bad:3.5,w:1},
@@ -1335,7 +1336,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v22</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v25</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
