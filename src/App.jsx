@@ -254,7 +254,7 @@ const INDICATORS = {
   ppiMom:0.5,      ppiCoreMom:0.4, cpiMom:0.9, cpiCoreMom:0.3,
   euCpiMom:1.0,    euCpiCoreMom:0.8, euPpiMom:-0.7, euPpiYoy:-3.0,
   spread2y:1.235,  spread10y:1.330, pceMom:0.3, de02y:2.645,
-  athi:405000,     atlo:226000, trin:1.060,  spx:7230.12,
+  athi:405,     atlo:226, trin:1.060,  spx:7230.12,
   btpBund:0.818,   vvixVix:5.60,
   dtb3:3.59,       sofr:3.66,   euur:6.2,    eujvr:2.2,
   de10y:3.042,     eurusd:1.17192, sx5e:5881.51, eursyy:1.7,
@@ -273,7 +273,7 @@ const PREV_INDICATORS = {
   ppiMom:0.5,      ppiCoreMom:0.4, cpiMom:0.9, cpiCoreMom:0.3,
   euCpiMom:1.3,    euCpiCoreMom:0.8, euPpiMom:-0.7, euPpiYoy:-3.0,
   spread2y:1.182,  spread10y:1.297, pceMom:0.4, de02y:2.747,
-  athi:86000,      atlo:240000, trin:0.650,  spx:7123.64,
+  athi:86,      atlo:240, trin:0.650,  spx:7123.64,
   btpBund:0.845,   vvixVix:5.19,
   dtb3:3.61,       sofr:3.66,   euur:6.2,    eujvr:2.2,
   de10y:3.042,     eurusd:1.17192, sx5e:5881.51, eursyy:1.7,
@@ -605,8 +605,8 @@ const RISK_LEAD_CFG=[
  {id:"cpi",good:2.0,bad:4.5,w:2},{id:"pce",good:2.0,bad:4.0,w:2},{id:"breakeven",good:2.0,bad:3.0,w:2},{id:"ismPricesPaid",good:40,bad:90,w:2},
  {id:"m2Dxy",good:225,bad:200,w:3},{id:"dxy",good:90,bad:110,w:3},{id:"oil",good:50,bad:130,w:1},{id:"crb",good:260,bad:450,w:1},
  {id:"euCpiMom",good:0.1,bad:0.4,w:1},{id:"euPpiMom",good:-0.5,bad:0.5,w:1},
- {id:"athi",label:"NYSE nuovi massimi",good:300,bad:100,w:3},
- {id:"atlo",label:"NYSE nuovi minimi",good:100,bad:300,w:2},
+ {id:"athi",label:"NYSE AT TODAY'S HIGH",good:520,bad:180,w:3},
+ {id:"atlo",label:"NYSE AT TODAY'S LOW",good:120,bad:440,w:2},
  {id:"trin",good:0.5,bad:1.5,w:3},{id:"spx",good:8000,bad:5000,w:5},
  {id:"us10y",good:2.0,bad:4.0,w:2},{id:"vvixVix",good:7,bad:3,w:2},
  {id:"dtb3",good:2.0,bad:3.5,w:1},{id:"sofr",good:2.0,bad:3.5,w:1},
@@ -1336,7 +1336,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v25</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v31</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
@@ -2649,8 +2649,8 @@ function valueColor(id, v){
     case "deppiyy":      return v<1?"#10B981":v<3?"#EF4444":"#EF4444";
     case "eursyy":       return v<0?"#EF4444":v<2?"#F59E0B":"#10B981";
     case "trin":         return v<0.7?"#0EA5E9":v<1.0?"#10B981":v<1.5?"#F59E0B":"#EF4444";
-    case "athi":         return v<100000?"#EF4444":v<300000?"#F59E0B":"#10B981";
-    case "atlo":         return v<100000?"#10B981":v<250000?"#F59E0B":"#EF4444";
+    case "athi":         return v<180?"#EF4444":v<520?"#F59E0B":"#10B981";
+    case "atlo":         return v<120?"#10B981":v<440?"#F59E0B":"#EF4444";
     case "spx":          return v<5000?"#EF4444":v<6500?"#EF4444":"#10B981";
     case "dtb3sofr":   {var a=Math.abs(v);return a<0.1?"#10B981":a<0.25?"#F59E0B":"#EF4444";}
     default:           return "#94a3b8";
@@ -2781,9 +2781,9 @@ const IND_META = {
   trin:        {label:"TRIN Arms Trading Index",        fmt:v=>`${v.toFixed(3)}`,
     desc:"Arms Index — relazione tra volumi e breadth NYSE.\n🔵 <0.5 = euforia (contrarian bearish)\n🟢 0.5-1.0 = risk-on\n🟡 1.0-1.5 = neutro\n🔴 >1.5 = risk-off / panico"},
   athi:        {label:"NYSE AT TODAY'S HIGH",           fmt:v=>`${Math.round(v)}`,
-    desc:"Numero titoli NYSE che fanno nuovi massimi oggi — breadth rialzista.\n🔴 <100K = breadth deteriora\n🟡 100-300K = normale\n🟢 >300K = breadth forte"},
+    desc:"Numero titoli NYSE che fanno nuovi massimi oggi — breadth rialzista.\n🔴 <180 = breadth debole\n🟡 180-520 = normale\n🟢 >520 = breadth forte"},
   atlo:        {label:"NYSE AT TODAY'S LOW",            fmt:v=>`${Math.round(v)}`,
-    desc:"Numero titoli NYSE che fanno nuovi minimi oggi — breadth ribassista.\n🟢 <100K = pressione ribassista bassa\n🟡 100-250K = normale\n🔴 >300K = deterioramento breadth"},
+    desc:"Numero titoli NYSE che fanno nuovi minimi oggi — breadth ribassista.\n🟢 <120 = pressione ribassista bassa\n🟡 120-440 = normale\n🔴 >440 = deterioramento breadth"},
   spx:         {label:"S&P 500",                        fmt:v=>`${v.toFixed(0)}`,
     desc:"Indice azionario USA — barometro risk-on globale.\n🔴 <5000 = risk-off\n🟡 5000-6500 = neutro/bull\n🟢 >6500 = bull market"},
   pceMom:      {label:"PCE Core MoM USA", fmt:v=>`${v>=0?"+":""}${v.toFixed(2)}%`,
