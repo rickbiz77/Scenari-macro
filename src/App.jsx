@@ -961,8 +961,8 @@ function parseIndicatoriCSV(text){
     if(key==="bdi"&&val<100)val=val*1000;
     if(key==="spx"&&val<1000)val=val*1000;
     if(key==="sx5e"&&val<1000)val=val*1000;
-    if(key==="athi"&&val<10000)val=val*1000;
-    if(key==="atlo"&&val<10000)val=val*1000;
+    
+    
     if((key==="igSpread"||key==="hySpread"||key==="emSpread")&&val>20)val=val/100;
     upd[key]=val;
   });
@@ -1009,8 +1009,8 @@ function parseMacroText(text){
       if(key==="bdi"&&val!==null&&val<100)val=val*1000;
       if(key==="spx"&&val!==null&&val<1000)val=val*1000;
       if(key==="sx5e"&&val!==null&&val<1000)val=val*1000;
-      if(key==="athi"&&val!==null&&val<10000)val=val*1000;
-      if(key==="atlo"&&val!==null&&val<10000)val=val*1000;
+      
+      
       if(val!==null)upd[key]=val;
     }
   }
@@ -1336,7 +1336,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v31</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v32</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
