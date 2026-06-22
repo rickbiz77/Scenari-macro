@@ -985,7 +985,7 @@ function parseRiskMomFromIndic(text){
     var t=(r[0]||"").trim(); if(!t)return;
     var pp=itNum(r[2]),gg=itNum(r[3]);
     if(pp===null||gg===null)return;
-    out.push({t:t,n:r[1]||"",p:pp,g:gg,w:itNum(r[4]),m:itNum(r[5]),q:itNum(r[6]),s:itNum(r[7]),y:itNum(r[8])});
+    out.push({t:t,n:r[1]||"",p:pp,g:gg,w:itNum(r[4]),m:itNum(r[5]),q:itNum(r[6]),s:itNum(r[7]),y:itNum(r[8]),st:itNum(r[12]),s200:itNum(r[13]),z:itNum(r[14]),s50:itNum(r[15])});
   });
   return out;
 }
@@ -1336,7 +1336,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v32</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v33</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
