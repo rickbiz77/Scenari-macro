@@ -279,6 +279,8 @@ const PREV_INDICATORS = {
   de10y:3.042,     eurusd:1.17192, sx5e:5881.51, eursyy:1.7,
   deCurve:0.397,   euRealYield:0.042, deppimm:2.5, deppiyy:-0.2,
 };
+// Storico dei FINAL score per settimana (per il delta TREND in %), persistito in localStorage
+const FINALS_HIST = {};
 
 // Baseline ancorato al GIORNO: il "precedente" (PREV_INDICATORS) si congela UNA volta al
 // primo aggiornamento di ogni giornata (= ultimi valori di ieri) e NON si muove piu' fino a
@@ -780,13 +782,14 @@ function gateValue(ticker, riskMom, scenarioScores, national){
   return {v:v,col:col,label:label};
 }
 function gateDot(col){return col==="#10B981"?"🟢":col==="#EAB308"?"🟡":col==="#F97316"?"🟠":"🔴";}
-function GatePill({ticker,riskMom,scenarioScores,national}){
+function GatePill({ticker,riskMom,scenarioScores,national,size="sm"}){
   const g=gateValue(ticker,riskMom,scenarioScores,national);
-  return <div title={"GATE: "+g.label+" ("+Math.round(g.v)+")"} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
-    <div style={{fontSize:6,color:"#475569"}}>GATE</div>
+  const lg=size==="lg";
+  return <div title={"GATE: "+g.label+" ("+Math.round(g.v)+")"} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:lg?2:1}}>
+    <div style={lg?{fontSize:7,color:"#475569",letterSpacing:1}:{fontSize:6,color:"#475569"}}>GATE</div>
     {(g.v===null||g.v===undefined||isNaN(g.v))
-      ? <span style={{color:"#374151",fontSize:10}}>—</span>
-      : <span style={{background:g.col+"22",border:"1px solid "+g.col,borderRadius:5,padding:"2px 5px",fontFamily:"monospace",fontSize:10,fontWeight:800,color:g.col,display:"inline-block",textAlign:"center"}}>{Math.round(g.v)}</span>}
+      ? <span style={{color:"#374151",fontSize:lg?14:10}}>—</span>
+      : <span style={{background:g.col+"22",border:"1px solid "+g.col,borderRadius:5,padding:lg?"4px 6px":"2px 5px",fontFamily:"monospace",fontSize:lg?14:10,fontWeight:800,color:g.col,minWidth:lg?52:0,display:"inline-block",textAlign:"center"}}>{Math.round(g.v)}</span>}
   </div>;
 }
 
@@ -815,13 +818,14 @@ function satScore(o){
 function satColor(v){return (v===null||v===undefined||isNaN(v))?"#6b7280":v>=75?"#EF4444":v>=60?"#F97316":v>=45?"#EAB308":"#10B981";}
 function satDot(v){return (v===null||v===undefined||isNaN(v))?"⚪":v>=75?"🔴":v>=60?"🟠":v>=45?"🟡":"🟢";}
 function satLabel(v){return (v===null||v===undefined||isNaN(v))?"—":v>=75?"IPERCOMPRATO":v>=60?"TIRATO":v>=45?"CARICO":"SCARICO";}
-function SatPill({v}){
+function SatPill({v,size="sm"}){
   const c=satColor(v);
-  return <div title={"SAT: Saturazione "+((v===null||v===undefined||isNaN(v))?"n/d":Math.round(v))} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
-    <div style={{fontSize:6,color:"#475569"}}>SAT</div>
+  const lg=size==="lg";
+  return <div title={"SAT: Saturazione "+((v===null||v===undefined||isNaN(v))?"n/d":Math.round(v))} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:lg?2:1}}>
+    <div style={lg?{fontSize:7,color:"#475569",letterSpacing:1}:{fontSize:6,color:"#475569"}}>SAT</div>
     {(v===null||v===undefined||isNaN(v))
-      ? <span style={{color:"#374151",fontSize:10}}>—</span>
-      : <span style={{background:c+"22",border:"1px solid "+c,borderRadius:5,padding:"2px 5px",fontFamily:"monospace",fontSize:10,fontWeight:800,color:c,display:"inline-block",textAlign:"center"}}>{Math.round(v)}</span>}
+      ? <span style={{color:"#374151",fontSize:lg?14:10}}>—</span>
+      : <span style={{background:c+"22",border:"1px solid "+c,borderRadius:5,padding:lg?"4px 6px":"2px 5px",fontFamily:"monospace",fontSize:lg?14:10,fontWeight:800,color:c,minWidth:lg?52:0,display:"inline-block",textAlign:"center"}}>{Math.round(v)}</span>}
   </div>;
 }
 
@@ -1061,6 +1065,8 @@ export default function App(){
       if(savedInd){var ind=JSON.parse(savedInd);Object.keys(ind).forEach(function(k){INDICATORS[k]=ind[k];});}
       var savedPrev=localStorage.getItem("pr_prev_indicators");
       if(savedPrev){var prev=JSON.parse(savedPrev);Object.keys(prev).forEach(function(k){PREV_INDICATORS[k]=prev[k];});}
+      var savedFinals=localStorage.getItem("pr_finals_hist");
+      if(savedFinals){var fh=JSON.parse(savedFinals);Object.keys(fh).forEach(function(k){FINALS_HIST[k]=fh[k];});}
     }catch(e){}
     fetch("https://drive.google.com/uc?export=download&id=1s6nF7_paJNgNJmuRotNPOpZKRodp8jMl")
       .then(function(r){return r.json();})
@@ -1304,10 +1310,12 @@ export default function App(){
   useEffect(()=>{
     const curScores=Object.fromEntries(allMomScores.map(s=>[s.id,s.composite]));
     const curFinals=Object.fromEntries(SCENARIOS.map(s=>[s.id,finalMap[s.id]]));
+    FINALS_HIST[CURRENT_WEEK]=curFinals;
+    try{localStorage.setItem("pr_finals_hist",JSON.stringify(FINALS_HIST));}catch(e){}
     setHistory(function(prevH){
       var base=prevH.length>0?prevH:[...SEED_HISTORY];
       var merged=base.filter(function(h){return h.week!==CURRENT_WEEK;});
-      merged.push({week:CURRENT_WEEK,update:LAST_UPDATE,scores:curScores,finals:curFinals});
+      merged.push({week:CURRENT_WEEK,update:LAST_UPDATE,scores:curScores});
       return merged.sort(function(a,b){return a.week-b.week;}).slice(-8);
     });
   },[renderKey]);
@@ -1321,9 +1329,8 @@ export default function App(){
     return vals[vals.length-1]-vals[vals.length-2];
   }
   function getFinalDeltaPct(sid){
-    if(history.length<2)return null;
-    const s=[...history].sort((a,b)=>a.week-b.week);
-    const vals=s.map(h=>h.finals?h.finals[sid]:null).filter(v=>v!=null);
+    const weeks=Object.keys(FINALS_HIST).map(Number).sort((a,b)=>a-b);
+    const vals=weeks.map(w=>(FINALS_HIST[w]&&FINALS_HIST[w][sid]!=null)?FINALS_HIST[w][sid]:null).filter(v=>v!=null);
     if(vals.length<2)return null;
     const prev=vals[vals.length-2], last=vals[vals.length-1];
     if(prev==null||prev===0)return null;
@@ -1341,7 +1348,7 @@ export default function App(){
     if(d===null) return <span style={{...base,background:"#1e293b",border:"1px solid #374151",color:"#374151"}}>—</span>;
     return <span style={{...base,background:c+"22",border:"1px solid "+c,color:c}}>{(d>=0?"+":"")+d.toFixed(1)+"%"}{a}</span>;
   }
-  function MiniGate({ticker,national}){return <div style={{display:"flex",alignItems:"center",gap:6}}><GatePill ticker={ticker} riskMom={riskMomScore} scenarioScores={finalMap} national={national}/><SatPill v={satMap[ticker]}/></div>;}
+  function MiniGate({ticker,national,size="sm"}){return <div style={{display:"flex",alignItems:"center",gap:size==="lg"?8:6}}><GatePill ticker={ticker} riskMom={riskMomScore} scenarioScores={finalMap} national={national} size={size}/><SatPill v={satMap[ticker]} size={size}/></div>;}
 
   const sortedByFinal=[...SCENARIOS].sort((a,b)=>(finalMap[b.id]??-999)-(finalMap[a.id]??-999));
 
@@ -1349,7 +1356,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v34</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v35</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
@@ -1534,7 +1541,7 @@ export default function App(){
                       <div style={{fontSize:7,color:"#475569",letterSpacing:1}}>SCORE</div>
                       <ScorePill v={score} size="lg"/>
                     </div>
-                    <MiniGate ticker={e.t}/>
+                    <MiniGate ticker={e.t} size="lg"/>
                   </div>
                 </div>
                 <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
@@ -1835,7 +1842,7 @@ export default function App(){
                   <div style={{fontSize:7,color:"#475569",letterSpacing:1}}>SCORE</div>
                   <ScorePill v={score} size="lg"/>
                 </div>
-                <MiniGate ticker={e.t}/>
+                <MiniGate ticker={e.t} size="lg"/>
               </div>
             </div>
             <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
@@ -1923,7 +1930,7 @@ export default function App(){
                   <div style={{fontSize:7,color:"#475569",letterSpacing:1}}>SCORE</div>
                   <ScorePill v={e.score} size="lg"/>
                 </div>
-                <MiniGate ticker={e.t} national/>
+                <MiniGate ticker={e.t} national size="lg"/>
               </div>
             </div>
             <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
