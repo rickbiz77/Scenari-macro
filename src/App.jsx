@@ -533,23 +533,21 @@ function isUSOpen(){
   }catch(e){return new Date().getHours()>=15;}
 }
 const RISK_MOM_CFG=[
-  {label:"SPX",num:"INDEXSP:.INX",den:null,w:8,scale:2.5},
+  {label:"SPX",num:"INDEXSP:.INX",den:null,w:12,scale:2.5},
   {label:"SX5E",num:"SX5E",den:null,w:5,scale:2.5},
-  {label:"NQ1!",num:"NQ1!",den:null,w:6,scale:3.0},
-  {label:"RTY1!",num:"RTY1!",den:null,w:3,scale:3.0},
-  {label:"DFII10",num:null,den:null,snap:"realYield",w:10,scale:0.40,inv:true},
-  {label:"HY",num:null,den:null,snap:"hySpread",w:10,scale:0.50,inv:true},
-  {label:"HG/GC",num:"HG1!",den:"GC1!",w:7,scale:3.0},
+  {label:"NQ1!",num:"NQ1!",den:null,w:9,scale:3.0},
+  {label:"RTY1!",num:"RTY1!",den:null,w:4,scale:3.0},
+  {label:"HG/GC",num:"HG1!",den:"GC1!",w:10,scale:3.0},
   {label:"HG/CL",num:"HG1!",den:"CL1!",w:7,scale:8.0},
-  {label:"DXY",num:"DXY",den:null,w:8,scale:1.5,inv:true},
+  {label:"DXY",num:"DXY",den:null,w:10,scale:1.5,inv:true},
   {label:"USDJPY",num:"USDJPY",den:null,w:6,scale:1.5},
   {label:"AUDUSD",num:"AUDUSD",den:null,w:2,scale:1.5},
-  {label:"VIX",num:"VIX",den:null,w:6,scale:12.0,inv:true},
+  {label:"VIX",num:"VIX",den:null,w:10,scale:12.0,inv:true},
   {label:"MOVE",num:"MOVE",den:null,w:4,scale:8.0,inv:true},
-  {label:"VVIX/VIX",num:"VVIX",den:"VIX",w:4,scale:6.0},
+  {label:"VVIX/VIX",num:"VVIX",den:"VIX",w:5,scale:6.0},
   {label:"COR1M",num:"COR1M",den:null,w:8,scale:25.0,inv:true},
-  {label:"BTC/GC",num:"BTCUSD",den:"GC1!",w:3,scale:5.0},
-  {label:"XLY/XLP",num:"XLY",den:"XLP",w:3,scale:2.0},
+  {label:"BTC/GC",num:"BTCUSD",den:"GC1!",w:4,scale:5.0},
+  {label:"XLY/XLP",num:"XLY",den:"XLP",w:4,scale:2.0},
 ];
 function riskMomBlend(e,morning){
   if(!e)return null;
@@ -785,8 +783,10 @@ function gateDot(col){return col==="#10B981"?"🟢":col==="#EAB308"?"🟡":col==
 function GatePill({ticker,riskMom,scenarioScores,national}){
   const g=gateValue(ticker,riskMom,scenarioScores,national);
   return <div title={"GATE: "+g.label+" ("+Math.round(g.v)+")"} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
-    <div style={{fontSize:7,fontWeight:700,letterSpacing:0.5,color:"#6b7280",lineHeight:1}}>GATE</div>
-    <span style={{fontSize:13,lineHeight:1}}>{gateDot(g.col)}</span>
+    <div style={{fontSize:6,color:"#475569"}}>GATE</div>
+    {(g.v===null||g.v===undefined||isNaN(g.v))
+      ? <span style={{color:"#374151",fontSize:10}}>—</span>
+      : <span style={{background:g.col+"22",border:"1px solid "+g.col,borderRadius:5,padding:"2px 5px",fontFamily:"monospace",fontSize:10,fontWeight:800,color:g.col,display:"inline-block",textAlign:"center"}}>{Math.round(g.v)}</span>}
   </div>;
 }
 
@@ -816,9 +816,12 @@ function satColor(v){return (v===null||v===undefined||isNaN(v))?"#6b7280":v>=75?
 function satDot(v){return (v===null||v===undefined||isNaN(v))?"⚪":v>=75?"🔴":v>=60?"🟠":v>=45?"🟡":"🟢";}
 function satLabel(v){return (v===null||v===undefined||isNaN(v))?"—":v>=75?"IPERCOMPRATO":v>=60?"TIRATO":v>=45?"CARICO":"SCARICO";}
 function SatPill({v}){
+  const c=satColor(v);
   return <div title={"SAT: Saturazione "+((v===null||v===undefined||isNaN(v))?"n/d":Math.round(v))} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
-    <div style={{fontSize:7,fontWeight:700,letterSpacing:0.5,color:"#6b7280",lineHeight:1}}>SAT</div>
-    <span style={{fontSize:13,lineHeight:1}}>{satDot(v)}</span>
+    <div style={{fontSize:6,color:"#475569"}}>SAT</div>
+    {(v===null||v===undefined||isNaN(v))
+      ? <span style={{color:"#374151",fontSize:10}}>—</span>
+      : <span style={{background:c+"22",border:"1px solid "+c,borderRadius:5,padding:"2px 5px",fontFamily:"monospace",fontSize:10,fontWeight:800,color:c,display:"inline-block",textAlign:"center"}}>{Math.round(v)}</span>}
   </div>;
 }
 
@@ -1300,10 +1303,11 @@ export default function App(){
 
   useEffect(()=>{
     const curScores=Object.fromEntries(allMomScores.map(s=>[s.id,s.composite]));
+    const curFinals=Object.fromEntries(SCENARIOS.map(s=>[s.id,finalMap[s.id]]));
     setHistory(function(prevH){
       var base=prevH.length>0?prevH:[...SEED_HISTORY];
       var merged=base.filter(function(h){return h.week!==CURRENT_WEEK;});
-      merged.push({week:CURRENT_WEEK,update:LAST_UPDATE,scores:curScores});
+      merged.push({week:CURRENT_WEEK,update:LAST_UPDATE,scores:curScores,finals:curFinals});
       return merged.sort(function(a,b){return a.week-b.week;}).slice(-8);
     });
   },[renderKey]);
@@ -1316,6 +1320,15 @@ export default function App(){
     if(vals.length<2)return null;
     return vals[vals.length-1]-vals[vals.length-2];
   }
+  function getFinalDeltaPct(sid){
+    if(history.length<2)return null;
+    const s=[...history].sort((a,b)=>a.week-b.week);
+    const vals=s.map(h=>h.finals?h.finals[sid]:null).filter(v=>v!=null);
+    if(vals.length<2)return null;
+    const prev=vals[vals.length-2], last=vals[vals.length-1];
+    if(prev==null||prev===0)return null;
+    return (last-prev)/prev*100;
+  }
   function deltaArrow(d){
     if(d===null)return{a:"-",c:"#F59E0B"};
     if(d>2)return{a:"▲",c:"#10B981"};
@@ -1326,7 +1339,7 @@ export default function App(){
     const{a,c}=deltaArrow(d);
     const base={borderRadius:5,padding:"4px 6px",fontFamily:"monospace",fontSize:14,fontWeight:800,display:"inline-block",whiteSpace:"nowrap",minWidth:52,textAlign:"center"};
     if(d===null) return <span style={{...base,background:"#1e293b",border:"1px solid #374151",color:"#374151"}}>—</span>;
-    return <span style={{...base,background:c+"22",border:"1px solid "+c,color:c}}>{(d>=0?"+":"")+d.toFixed(1)}{a}</span>;
+    return <span style={{...base,background:c+"22",border:"1px solid "+c,color:c}}>{(d>=0?"+":"")+d.toFixed(1)+"%"}{a}</span>;
   }
   function MiniGate({ticker,national}){return <div style={{display:"flex",alignItems:"center",gap:6}}><GatePill ticker={ticker} riskMom={riskMomScore} scenarioScores={finalMap} national={national}/><SatPill v={satMap[ticker]}/></div>;}
 
@@ -1336,7 +1349,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v33</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v34</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
@@ -1360,7 +1373,7 @@ export default function App(){
           const coreIds=new Set(sortedByCore.slice(0,2).map(x=>x.id));
           return sortedByFinal.map((s,rank)=>{
           const mom=momMap[s.id]?.composite,lead=leadMap[s.id],final=finalMap[s.id];
-          const delta=getSmoothedDelta(s.id);
+          const delta=getFinalDeltaPct(s.id);
           const fcol=scoreColor(final);
           const isCore=coreIds.has(s.id);
           return <div key={s.id} onClick={()=>setSel(s.id)} style={{background:isCore?"#0f172a":"#080812",border:"2px solid "+(isCore?s.color:"#1f2937"),borderRadius:12,padding:14,cursor:"pointer",boxShadow:isCore?"0 0 10px "+s.color+"55":"none"}}>
@@ -1399,7 +1412,7 @@ export default function App(){
         <div style={{fontSize:10,color:"#6b7280",marginBottom:8}}>{sc.desc}</div>
         <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:8,flexWrap:"wrap"}}>
           {(()=>{
-            const d=getSmoothedDelta(sc.id);
+            const d=getFinalDeltaPct(sc.id);
             const items=[
               {label:"MOM",    v:momMap[sc.id]?.composite, hi:false, isDelta:false},
               {label:"Δ TREND",v:null,                     hi:false, isDelta:true},
