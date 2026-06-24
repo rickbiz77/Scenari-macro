@@ -787,7 +787,7 @@ function GatePill({ticker,riskMom,scenarioScores,national,size="sm"}){
   const lg=size==="lg";
   return <div title={"GATE: "+g.label+" ("+Math.round(g.v)+")"} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:lg?2:1}}>
     <div style={lg?{fontSize:7,color:"#475569",letterSpacing:1}:{fontSize:6,color:"#475569"}}>GATE</div>
-    <span style={{color:g.col,fontSize:lg?18:14,lineHeight:1}}>●</span>
+    <span style={{border:"1px solid transparent",padding:lg?"4px 6px":"2px 5px",minWidth:lg?52:0,display:"inline-flex",alignItems:"center",justifyContent:"center"}}><span style={{width:lg?17:12,height:lg?17:12,borderRadius:"50%",background:g.col,display:"inline-block"}}/></span>
   </div>;
 }
 
@@ -1328,7 +1328,12 @@ export default function App(){
   }
   function getFinalDeltaPct(sid){
     const weeks=Object.keys(FINALS_HIST).map(Number).sort((a,b)=>a-b);
-    const vals=weeks.map(w=>(FINALS_HIST[w]&&FINALS_HIST[w][sid]!=null)?FINALS_HIST[w][sid]:null).filter(v=>v!=null);
+    let vals=weeks.map(w=>(FINALS_HIST[w]&&FINALS_HIST[w][sid]!=null)?FINALS_HIST[w][sid]:null).filter(v=>v!=null);
+    if(vals.length<2){
+      // fallback finche' i FINAL non si accumulano (2 settimane): uso lo storico momentum, gia' popolato
+      const s=[...history].sort((a,b)=>a.week-b.week);
+      vals=s.map(h=>h.scores?h.scores[sid]:null).filter(v=>v!=null);
+    }
     if(vals.length<2)return null;
     const prev=vals[vals.length-2], last=vals[vals.length-1];
     if(prev==null||prev===0)return null;
@@ -1367,7 +1372,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v36</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v38</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
