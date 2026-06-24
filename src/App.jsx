@@ -787,9 +787,7 @@ function GatePill({ticker,riskMom,scenarioScores,national,size="sm"}){
   const lg=size==="lg";
   return <div title={"GATE: "+g.label+" ("+Math.round(g.v)+")"} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:lg?2:1}}>
     <div style={lg?{fontSize:7,color:"#475569",letterSpacing:1}:{fontSize:6,color:"#475569"}}>GATE</div>
-    {(g.v===null||g.v===undefined||isNaN(g.v))
-      ? <span style={{color:"#374151",fontSize:lg?14:10}}>—</span>
-      : <span style={{background:g.col+"22",border:"1px solid "+g.col,borderRadius:5,padding:lg?"4px 6px":"2px 5px",fontFamily:"monospace",fontSize:lg?14:10,fontWeight:800,color:g.col,minWidth:lg?52:0,display:"inline-block",textAlign:"center"}}>{Math.round(g.v)}</span>}
+    <span style={{color:g.col,fontSize:lg?18:14,lineHeight:1}}>●</span>
   </div>;
 }
 
@@ -1349,6 +1347,19 @@ export default function App(){
     return <span style={{...base,background:c+"22",border:"1px solid "+c,color:c}}>{(d>=0?"+":"")+d.toFixed(1)+"%"}{a}</span>;
   }
   function MiniGate({ticker,national,size="sm"}){return <div style={{display:"flex",alignItems:"center",gap:size==="lg"?8:6}}><GatePill ticker={ticker} riskMom={riskMomScore} scenarioScores={finalMap} national={national} size={size}/><SatPill v={satMap[ticker]} size={size}/></div>;}
+  function PillRow({e,score,national,size="sm"}){
+    const arr=scoreArrow(score==null?0:score);
+    const lg=size==="lg";
+    const lab=lg?{fontSize:7,color:"#475569",letterSpacing:1}:{fontSize:6,color:"#475569"};
+    const col={display:"flex",flexDirection:"column",alignItems:"center",gap:lg?2:1};
+    return <div style={{display:"flex",alignItems:"center",gap:lg?8:6,justifyContent:"center"}}>
+      <div style={col}><div style={lab}>AVG.MOM</div><AvgMomPill v={calcAvgMom(e)} size={size}/></div>
+      <span style={{fontSize:13,color:arr.c,fontWeight:800}}>{arr.a}</span>
+      <div style={col}><div style={lab}>SCORE</div><ScorePill v={score} size={size}/></div>
+      <SatPill v={satMap[e.t]} size={size}/>
+      <GatePill ticker={e.t} riskMom={riskMomScore} scenarioScores={finalMap} national={national} size={size}/>
+    </div>;
+  }
 
   const sortedByFinal=[...SCENARIOS].sort((a,b)=>(finalMap[b.id]??-999)-(finalMap[a.id]??-999));
 
@@ -1356,7 +1367,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v35</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v36</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
@@ -1454,8 +1465,8 @@ export default function App(){
             <tr style={{borderBottom:"1px solid #1f2937"}}>
               <th style={{textAlign:"left",padding:"5px 8px",fontSize:9,color:"#4b5563"}}>TICKER</th>
               <th style={{textAlign:"left",padding:"5px 8px",fontSize:9,color:"#4b5563"}}>NOME</th>
-              <th style={{textAlign:"center",padding:"5px 6px",fontSize:9,color:"#F59E0B"}}>MOM / GATE / SAT</th>
               <th style={{textAlign:"right",padding:"5px 6px",fontSize:9,color:"#4b5563"}}>PREZZO</th>
+              <th style={{textAlign:"center",padding:"5px 6px",fontSize:9,color:"#F59E0B"}}>MOM / GATE / SAT</th>
               {PERS.map(p=> <th key={p.k} style={{textAlign:"right",padding:"5px 4px",fontSize:9,color:per===p.k?"#F59E0B":"#4b5563",fontWeight:per===p.k?700:500}}>{p.l}</th>)}
             </tr>
           </thead>
@@ -1464,21 +1475,11 @@ export default function App(){
               <tr key={i} style={{borderTop:"1px solid #0f172a"}}>
                 <td style={{padding:"9px 8px",fontFamily:"monospace",fontSize:11,fontWeight:700,color:sc.color}}>{e.t}</td>
                 <td style={{padding:"9px 8px",fontSize:9,color:"#6b7280"}}>{e.n}</td>
-                <td style={{padding:"9px 6px",textAlign:"center"}}>
-                  <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"center"}}>
-                    <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
-                      <div style={{fontSize:6,color:"#475569"}}>AVG.MOM</div>
-                      <AvgMomPill v={calcAvgMom(e)}/>
-                    </div>
-                    <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
-                      <div style={{fontSize:6,color:"#475569"}}>SCORE</div>
-                      <ScorePill v={etfMap[e.t]?.composite}/>
-                    </div>
-                    <MiniGate ticker={e.t}/>
-                  </div>
+                <td style={{padding:"9px 6px",textAlign:"right",verticalAlign:"bottom",fontFamily:"monospace",fontSize:10,color:"#e2e8f0"}}>${e.p.toFixed(2)}</td>
+                <td style={{padding:"9px 6px",textAlign:"center",verticalAlign:"bottom"}}>
+                  <PillRow e={e} score={etfMap[e.t]?.composite}/>
                 </td>
-                <td style={{padding:"9px 6px",textAlign:"right",fontFamily:"monospace",fontSize:10,color:"#e2e8f0"}}>${e.p.toFixed(2)}</td>
-                {PERS.map(p=> <td key={p.k} style={{padding:"9px 4px",textAlign:"right",background:per===p.k?"rgba(245,158,11,0.05)":"transparent"}}><Pct v={e[p.k]}/></td>)}
+                {PERS.map(p=> <td key={p.k} style={{padding:"9px 4px",textAlign:"right",verticalAlign:"bottom",background:per===p.k?"rgba(245,158,11,0.05)":"transparent"}}><Pct v={e[p.k]}/></td>)}
               </tr>
             ))}
             <tr style={{borderTop:"2px solid #1f2937",background:"rgba(255,255,255,0.02)"}}>
@@ -1530,19 +1531,7 @@ export default function App(){
                     </div>
                     <div style={{fontSize:9,color:"#6b7280",paddingLeft:2}}>{e.n}</div>
                   </div>
-                  <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-                    <div style={{fontFamily:"monospace",fontSize:11,color:"#94a3b8"}}>${e.p?.toFixed(2)}</div>
-                    <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
-                      <div style={{fontSize:7,color:"#475569",letterSpacing:1}}>AVG.MOM</div>
-                      <AvgMomPill v={calcAvgMom(e)} size="lg"/>
-                    </div>
-                    <span style={{fontSize:13,color:arr.c,fontWeight:800}}>{arr.a}</span>
-                    <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
-                      <div style={{fontSize:7,color:"#475569",letterSpacing:1}}>SCORE</div>
-                      <ScorePill v={score} size="lg"/>
-                    </div>
-                    <MiniGate ticker={e.t} size="lg"/>
-                  </div>
+                  <PillRow e={e} score={score} size="lg"/>
                 </div>
                 <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
                   {[{k:"w",l:"1S"},{k:"m",l:"1M"},{k:"q",l:"3M"},{k:"s",l:"6M"},{k:"y",l:"1A"},{k:"y5",l:"5A"}].map(p=>(
@@ -1831,19 +1820,7 @@ export default function App(){
                 </div>
                 <div style={{fontSize:9,color:"#6b7280",paddingLeft:2}}>{e.n}</div>
               </div>
-              <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-                <div style={{fontFamily:"monospace",fontSize:11,color:"#94a3b8"}}>${e.p?.toFixed(2)}</div>
-                <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
-                  <div style={{fontSize:7,color:"#475569",letterSpacing:1}}>AVG.MOM</div>
-                  <AvgMomPill v={calcAvgMom(e)} size="lg"/>
-                </div>
-                <span style={{fontSize:13,color:arr.c,fontWeight:800}}>{arr.a}</span>
-                <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
-                  <div style={{fontSize:7,color:"#475569",letterSpacing:1}}>SCORE</div>
-                  <ScorePill v={score} size="lg"/>
-                </div>
-                <MiniGate ticker={e.t} size="lg"/>
-              </div>
+              <PillRow e={e} score={score} size="lg"/>
             </div>
             <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
               {[{k:"w",l:"1S"},{k:"m",l:"1M"},{k:"q",l:"3M"},{k:"s",l:"6M"},{k:"y",l:"1A"},{k:"y2",l:"2A"},{k:"y3",l:"3A"},{k:"y5",l:"5A"}].map(p=>(
@@ -1919,19 +1896,7 @@ export default function App(){
                 </div>
                 <div style={{fontSize:9,color:"#6b7280",paddingLeft:2}}>{e.n}</div>
               </div>
-              <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
-                <div style={{fontFamily:"monospace",fontSize:11,color:"#94a3b8"}}>${e.p?.toFixed(2)}</div>
-                <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
-                  <div style={{fontSize:7,color:"#475569",letterSpacing:1}}>AVG.MOM</div>
-                  <AvgMomPill v={calcAvgMom(e)} size="lg"/>
-                </div>
-                <span style={{fontSize:13,color:arr.c,fontWeight:800}}>{arr.a}</span>
-                <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
-                  <div style={{fontSize:7,color:"#475569",letterSpacing:1}}>SCORE</div>
-                  <ScorePill v={e.score} size="lg"/>
-                </div>
-                <MiniGate ticker={e.t} national size="lg"/>
-              </div>
+              <PillRow e={e} score={e.score} national size="lg"/>
             </div>
             <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
               {[{k:"w",l:"1S"},{k:"m",l:"1M"},{k:"q",l:"3M"},{k:"s",l:"6M"},{k:"y",l:"1A"},{k:"y2",l:"2A"},{k:"y3",l:"3A"},{k:"y5",l:"5A"}].map(p=>(
