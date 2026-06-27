@@ -1373,7 +1373,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v40</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v41</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
@@ -1823,8 +1823,9 @@ export default function App(){
         return tw>0?s/tw:null;
       }
       const valid=pool.map(e=>({...e,_tf:tfVal(e)})).filter(e=>e._tf!=null);
-      const hot=valid.filter(e=>e._tf>0).map(e=>({...e,emrg:e._tf*(100-(e.score??50))/100})).sort((a,b)=>b.emrg-a.emrg).slice(0,15);
-      const cold=valid.filter(e=>e._tf<0).map(e=>({...e,emrg:e._tf*((e.score??50))/100})).sort((a,b)=>a.emrg-b.emrg).slice(0,15);
+      const HOT_MAX=50; // TOP HOT: solo score sotto soglia (esclude i gia' alti); TOP COLD: solo score alto
+      const hot=valid.filter(e=>e._tf>0&&(e.score==null||e.score<HOT_MAX)).map(e=>({...e,emrg:e._tf*(100-(e.score??50))/100})).sort((a,b)=>b.emrg-a.emrg).slice(0,15);
+      const cold=valid.filter(e=>e._tf<0&&e.score!=null&&e.score>=HOT_MAX).map(e=>({...e,emrg:e._tf*((e.score??50))/100})).sort((a,b)=>a.emrg-b.emrg).slice(0,15);
       function RadarCard({e,i}){
         const bord=e.national?"rgba(16,185,129,0.4)":"rgba(245,158,11,0.4)";
         return <div style={{background:"#0f172a",border:"1px solid "+bord,borderRadius:10,padding:12}}>
@@ -1869,7 +1870,7 @@ export default function App(){
         <div>
           <div style={{background:"#0f172a",border:"1px solid rgba(239,68,68,0.3)",borderRadius:8,padding:"8px 12px",marginBottom:8}}>
             <div style={{fontSize:13,fontWeight:800,color:"#EF4444"}}>🔥 TOP HOT</div>
-            <div style={{fontSize:8,color:"#6b7280"}}>Salgono più forte con score ancora basso — gli early-mover da non perdere</div>
+            <div style={{fontSize:8,color:"#6b7280"}}>Salgono più forte ma con score ancora basso (sotto 50) — gli early-mover da non perdere</div>
           </div>
           {hot.length===0
             ?<div style={{padding:16,textAlign:"center",fontSize:11,color:"#6b7280"}}>Nessun ticker in salita su {tfLab[tfKey]}</div>
@@ -1878,7 +1879,7 @@ export default function App(){
         <div>
           <div style={{background:"#0f172a",border:"1px solid rgba(59,130,246,0.3)",borderRadius:8,padding:"8px 12px",marginBottom:8}}>
             <div style={{fontSize:13,fontWeight:800,color:"#3B82F6"}}>🧊 TOP COLD</div>
-            <div style={{fontSize:8,color:"#6b7280"}}>Score alto ma in calo maggiore — i treni che frenano</div>
+            <div style={{fontSize:8,color:"#6b7280"}}>Score alto (50 o più) ma in calo maggiore — i treni che frenano</div>
           </div>
           {cold.length===0
             ?<div style={{padding:16,textAlign:"center",fontSize:11,color:"#6b7280"}}>Nessun ticker in calo su {tfLab[tfKey]}</div>
