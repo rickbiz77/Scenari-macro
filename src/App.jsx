@@ -1033,6 +1033,7 @@ export default function App(){
   const [history,setHistory]=useState([]);
   const [selLead,setSelLead]=useState(null);
   const [selRiskBox,setSelRiskBox]=useState(null);
+  const [radarTf,setRadarTf]=useState("g");
   const [refreshing,setRefreshing]=useState(false);
   const [refreshMsg,setRefreshMsg]=useState("");
   const [macroText,setMacroText]=useState("");
@@ -1372,14 +1373,14 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v38</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v39</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
     </div>
 
     <div style={{display:"flex",gap:2,marginBottom:16,borderBottom:"1px solid #1f2937",flexWrap:"wrap"}}>
-      {[{id:"scenarios",l:"📁 Scenari"},{id:"riskonoff",l:"🎯 Risk"},{id:"etfattivi",l:"⭐ ETF Attivi"},{id:"etfnaz",l:"🌍 ETF Nazionali"},{id:"indicatori",l:"📡 Indicatori"},{id:"banche",l:"🏦 Banche Centrali"},{id:"charts",l:"📈 Grafici"},{id:"aggiorna",l:"⚙️ Aggiorna"}].map(t=>(
+      {[{id:"scenarios",l:"📁 Scenari"},{id:"riskonoff",l:"🎯 Risk"},{id:"radar",l:"📡 Radar"},{id:"etfattivi",l:"⭐ ETF Attivi"},{id:"etfnaz",l:"🌍 ETF Nazionali"},{id:"indicatori",l:"📡 Indicatori"},{id:"banche",l:"🏦 Banche Centrali"},{id:"charts",l:"📈 Grafici"},{id:"aggiorna",l:"⚙️ Aggiorna"}].map(t=>(
         <button key={t.id} onClick={()=>{setTab(t.id);setSel(null);setSelLead(null);setSelRiskBox(null);}} style={{background:"none",border:"none",padding:"7px 12px",cursor:"pointer",fontSize:11,fontWeight:600,color:tab===t.id?"#F59E0B":"#6b7280",borderBottom:tab===t.id?"2px solid #F59E0B":"2px solid transparent",marginBottom:-1}}>{t.l}</button>
       ))}
     </div>
@@ -1796,6 +1797,84 @@ export default function App(){
           ))}
         </div>
         <div style={{fontSize:8,color:"#374151",textAlign:"center",marginTop:6}}>Scenario attivo: {activeScenarios.join(" + ").toUpperCase()||"nessuno"} · Risk On/Off {Math.round(riskOnOff)}/100</div>
+      </div>;
+    })()}
+
+    {tab==="radar"&&(()=>{
+      const seenR=new Set(),pool=[];
+      SCENARIOS.forEach(s=>s.etfs.forEach(e=>{if(!seenR.has(e.t)){seenR.add(e.t);pool.push({...e,score:etfMap[e.t]?.composite??null,national:false});}}));
+      const Wn={w:0.45,m:0.35,q:0.12,s:0.05,y:0.03};
+      const nzRaw=ETF_NAZIONALI.map(e=>{let s=0,tw=0;Object.entries(Wn).forEach(([k,w])=>{if(e[k]!=null){s+=e[k]*w;tw+=w;}});return{...e,raw:tw>0?s/tw:null};});
+      const nzVals=nzRaw.map(e=>e.raw).filter(v=>v!=null);
+      const nzMn=nzVals.length?Math.min(...nzVals):0,nzMx=nzVals.length?Math.max(...nzVals):0;
+      const nzSorted=[...nzRaw].sort((a,b)=>(a.raw??-999)-(b.raw??-999));
+      const nzN=nzSorted.length;
+      nzRaw.forEach(e=>{
+        if(seenR.has(e.t))return;seenR.add(e.t);
+        let score=null;
+        if(e.raw!=null&&nzN>1){const rank=(nzSorted.findIndex(x=>x.t===e.t)/(nzN-1))*100;const norm=nzMx!==nzMn?(e.raw-nzMn)/(nzMx-nzMn)*100:50;score=Math.round(rank*0.75+norm*0.25);}
+        pool.push({...e,score:score,national:true});
+      });
+      const tfKey=radarTf,tfLab={g:"1G",w:"1S",m:"1M"};
+      const valid=pool.filter(e=>e[tfKey]!=null);
+      const hot=valid.filter(e=>e[tfKey]>0).map(e=>({...e,emrg:e[tfKey]*(100-(e.score??50))/100})).sort((a,b)=>b.emrg-a.emrg).slice(0,15);
+      const cold=valid.filter(e=>e[tfKey]<0).map(e=>({...e,emrg:e[tfKey]*((e.score??50))/100})).sort((a,b)=>a.emrg-b.emrg).slice(0,15);
+      function RadarCard({e,i}){
+        const bord=e.national?"rgba(16,185,129,0.4)":"rgba(245,158,11,0.4)";
+        return <div style={{background:"#0f172a",border:"1px solid "+bord,borderRadius:10,padding:12}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8,gap:6}}>
+            <div style={{display:"flex",flexDirection:"column",gap:2,minWidth:0,flex:1}}>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <div style={{background:"#1e293b",color:"#6b7280",fontSize:8,fontWeight:800,padding:"2px 6px",borderRadius:4,flexShrink:0}}>#{i+1}</div>
+                <div style={{fontFamily:"monospace",fontSize:15,fontWeight:800,color:"#f8fafc"}}>{e.t}</div>
+                {e.national&&<div style={{background:"#1e293b",color:"#10B981",fontSize:7,fontWeight:800,padding:"2px 5px",borderRadius:4,flexShrink:0}}>NAZ</div>}
+              </div>
+              <div style={{fontSize:9,color:"#6b7280",paddingLeft:2}}>{e.n}</div>
+            </div>
+            <PillRow e={e} score={e.score} national={e.national} size="lg"/>
+          </div>
+          <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+            {[{k:"g",l:"1G"},{k:"w",l:"1S"},{k:"m",l:"1M"},{k:"q",l:"3M"},{k:"s",l:"6M"},{k:"y",l:"1A"},{k:"y2",l:"2A"},{k:"y3",l:"3A"},{k:"y5",l:"5A"}].map(p=>(
+              <div key={p.k} style={{flex:1,minWidth:36,background:p.k===tfKey?"rgba(245,158,11,0.12)":"#0a0a14",border:p.k===tfKey?"1px solid rgba(245,158,11,0.45)":"1px solid transparent",borderRadius:5,padding:"5px 4px",textAlign:"center"}}>
+                <div style={{fontSize:7,color:p.k===tfKey?"#F59E0B":"#4b5563",marginBottom:1}}>{p.l}</div>
+                <div style={{fontFamily:"monospace",fontSize:10,fontWeight:700,color:e[p.k]!=null&&e[p.k]>=0?"#10B981":"#EF4444"}}>
+                  {e[p.k]!=null?(e[p.k]>=0?"+":"")+e[p.k].toFixed(1)+"%":"—"}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>;
+      }
+      return <div style={{display:"flex",flexDirection:"column",gap:16}}>
+        <div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:6}}>
+            <div style={{fontSize:16,fontWeight:800,color:"#f8fafc"}}>RADAR 📡</div>
+            <div style={{display:"flex",gap:4}}>
+              {[{k:"g",l:"1G"},{k:"w",l:"1S"},{k:"m",l:"1M"}].map(t=>(
+                <button key={t.k} onClick={()=>setRadarTf(t.k)} style={{background:radarTf===t.k?"#F59E0B":"#1e293b",border:"none",borderRadius:6,padding:"5px 13px",cursor:"pointer",fontSize:11,fontWeight:800,color:radarTf===t.k?"#0a0a14":"#94a3b8"}}>{t.l}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{fontSize:9,color:"#6b7280"}}>Acceleratori su variazione {tfLab[tfKey]} di prezzo · EMERGENTE = variazione x (100-score)/100 · doppioni rimossi</div>
+        </div>
+        <div>
+          <div style={{background:"#0f172a",border:"1px solid rgba(239,68,68,0.3)",borderRadius:8,padding:"8px 12px",marginBottom:8}}>
+            <div style={{fontSize:13,fontWeight:800,color:"#EF4444"}}>🔥 TOP HOT</div>
+            <div style={{fontSize:8,color:"#6b7280"}}>Salgono più forte con score ancora basso — gli early-mover da non perdere</div>
+          </div>
+          {hot.length===0
+            ?<div style={{padding:16,textAlign:"center",fontSize:11,color:"#6b7280"}}>Nessun ticker in salita su {tfLab[tfKey]}</div>
+            :<div style={{display:"flex",flexDirection:"column",gap:8}}>{hot.map((e,i)=><RadarCard key={e.t} e={e} i={i}/>)}</div>}
+        </div>
+        <div>
+          <div style={{background:"#0f172a",border:"1px solid rgba(59,130,246,0.3)",borderRadius:8,padding:"8px 12px",marginBottom:8}}>
+            <div style={{fontSize:13,fontWeight:800,color:"#3B82F6"}}>🧊 TOP COLD</div>
+            <div style={{fontSize:8,color:"#6b7280"}}>Score alto ma in calo maggiore — i treni che frenano</div>
+          </div>
+          {cold.length===0
+            ?<div style={{padding:16,textAlign:"center",fontSize:11,color:"#6b7280"}}>Nessun ticker in calo su {tfLab[tfKey]}</div>
+            :<div style={{display:"flex",flexDirection:"column",gap:8}}>{cold.map((e,i)=><RadarCard key={e.t} e={e} i={i}/>)}</div>}
+        </div>
       </div>;
     })()}
 
