@@ -1373,7 +1373,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v39</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v40</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
@@ -1815,10 +1815,16 @@ export default function App(){
         if(e.raw!=null&&nzN>1){const rank=(nzSorted.findIndex(x=>x.t===e.t)/(nzN-1))*100;const norm=nzMx!==nzMn?(e.raw-nzMn)/(nzMx-nzMn)*100:50;score=Math.round(rank*0.75+norm*0.25);}
         pool.push({...e,score:score,national:true});
       });
-      const tfKey=radarTf,tfLab={g:"1G",w:"1S",m:"1M"};
-      const valid=pool.filter(e=>e[tfKey]!=null);
-      const hot=valid.filter(e=>e[tfKey]>0).map(e=>({...e,emrg:e[tfKey]*(100-(e.score??50))/100})).sort((a,b)=>b.emrg-a.emrg).slice(0,15);
-      const cold=valid.filter(e=>e[tfKey]<0).map(e=>({...e,emrg:e[tfKey]*((e.score??50))/100})).sort((a,b)=>a.emrg-b.emrg).slice(0,15);
+      const tfKey=radarTf,tfLab={g:"1G",w:"1S",m:"1M",tot:"TOT"};
+      const TOTW={g:0.5,w:0.3,m:0.2};
+      function tfVal(e){
+        if(tfKey!=="tot")return e[tfKey];
+        let s=0,tw=0;Object.entries(TOTW).forEach(([k,w])=>{if(e[k]!=null){s+=e[k]*w;tw+=w;}});
+        return tw>0?s/tw:null;
+      }
+      const valid=pool.map(e=>({...e,_tf:tfVal(e)})).filter(e=>e._tf!=null);
+      const hot=valid.filter(e=>e._tf>0).map(e=>({...e,emrg:e._tf*(100-(e.score??50))/100})).sort((a,b)=>b.emrg-a.emrg).slice(0,15);
+      const cold=valid.filter(e=>e._tf<0).map(e=>({...e,emrg:e._tf*((e.score??50))/100})).sort((a,b)=>a.emrg-b.emrg).slice(0,15);
       function RadarCard({e,i}){
         const bord=e.national?"rgba(16,185,129,0.4)":"rgba(245,158,11,0.4)";
         return <div style={{background:"#0f172a",border:"1px solid "+bord,borderRadius:10,padding:12}}>
@@ -1834,14 +1840,17 @@ export default function App(){
             <PillRow e={e} score={e.score} national={e.national} size="lg"/>
           </div>
           <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-            {[{k:"g",l:"1G"},{k:"w",l:"1S"},{k:"m",l:"1M"},{k:"q",l:"3M"},{k:"s",l:"6M"},{k:"y",l:"1A"},{k:"y2",l:"2A"},{k:"y3",l:"3A"},{k:"y5",l:"5A"}].map(p=>(
-              <div key={p.k} style={{flex:1,minWidth:36,background:p.k===tfKey?"rgba(245,158,11,0.12)":"#0a0a14",border:p.k===tfKey?"1px solid rgba(245,158,11,0.45)":"1px solid transparent",borderRadius:5,padding:"5px 4px",textAlign:"center"}}>
-                <div style={{fontSize:7,color:p.k===tfKey?"#F59E0B":"#4b5563",marginBottom:1}}>{p.l}</div>
+            {[{k:"g",l:"1G"},{k:"w",l:"1S"},{k:"m",l:"1M"},{k:"q",l:"3M"},{k:"s",l:"6M"},{k:"y",l:"1A"},{k:"y2",l:"2A"},{k:"y3",l:"3A"},{k:"y5",l:"5A"}].map(p=>{
+              const hl=tfKey==="tot"?["g","w","m"].includes(p.k):p.k===tfKey;
+              return (
+              <div key={p.k} style={{flex:1,minWidth:36,background:hl?"rgba(245,158,11,0.12)":"#0a0a14",border:hl?"1px solid rgba(245,158,11,0.45)":"1px solid transparent",borderRadius:5,padding:"5px 4px",textAlign:"center"}}>
+                <div style={{fontSize:7,color:hl?"#F59E0B":"#4b5563",marginBottom:1}}>{p.l}</div>
                 <div style={{fontFamily:"monospace",fontSize:10,fontWeight:700,color:e[p.k]!=null&&e[p.k]>=0?"#10B981":"#EF4444"}}>
                   {e[p.k]!=null?(e[p.k]>=0?"+":"")+e[p.k].toFixed(1)+"%":"—"}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>;
       }
@@ -1850,12 +1859,12 @@ export default function App(){
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:6}}>
             <div style={{fontSize:16,fontWeight:800,color:"#f8fafc"}}>RADAR 📡</div>
             <div style={{display:"flex",gap:4}}>
-              {[{k:"g",l:"1G"},{k:"w",l:"1S"},{k:"m",l:"1M"}].map(t=>(
+              {[{k:"g",l:"1G"},{k:"w",l:"1S"},{k:"m",l:"1M"},{k:"tot",l:"TOT"}].map(t=>(
                 <button key={t.k} onClick={()=>setRadarTf(t.k)} style={{background:radarTf===t.k?"#F59E0B":"#1e293b",border:"none",borderRadius:6,padding:"5px 13px",cursor:"pointer",fontSize:11,fontWeight:800,color:radarTf===t.k?"#0a0a14":"#94a3b8"}}>{t.l}</button>
               ))}
             </div>
           </div>
-          <div style={{fontSize:9,color:"#6b7280"}}>Acceleratori su variazione {tfLab[tfKey]} di prezzo · EMERGENTE = variazione x (100-score)/100 · doppioni rimossi</div>
+          <div style={{fontSize:9,color:"#6b7280"}}>Acceleratori su variazione {tfLab[tfKey]}{tfKey==="tot"?" (1G 50% · 1S 30% · 1M 20%)":""} di prezzo · EMERGENTE = variazione x (100-score)/100 · doppioni rimossi</div>
         </div>
         <div>
           <div style={{background:"#0f172a",border:"1px solid rgba(239,68,68,0.3)",borderRadius:8,padding:"8px 12px",marginBottom:8}}>
