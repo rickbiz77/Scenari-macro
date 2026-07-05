@@ -300,6 +300,24 @@ function ensureDailyBaseline(keys){
   return true;
 }
 
+// Variazione CONGELATA: PREV = ultimo valore DIVERSO. Aggiorno PREV solo quando il dato cambia
+// davvero; se resta uguale (es. CPI per un mese intero) PREV non si muove e la variazione resta
+// ferma sull'ultimo movimento vero invece di crollare a zero. Regola unica per tutti gli indicatori:
+// sul mercato (cambia ogni giorno) PREV segue in continuo; sui dati lenti tiene l'ultimo movimento.
+function applyIndicatorUpdate(updObj, keys){
+  (keys||Object.keys(updObj)).forEach(function(k){
+    var nv=updObj[k];
+    if(nv==null||isNaN(nv))return;                 // dato non valido: non tocco niente
+    var ov=INDICATORS[k];
+    if(ov!=null&&!isNaN(ov)&&nv!==ov){              // valore cambiato -> congelo il precedente diverso
+      PREV_INDICATORS[k]=ov;
+    }
+    INDICATORS[k]=nv;
+  });
+  try{localStorage.setItem("pr_indicators",JSON.stringify(INDICATORS));}catch(e){}
+  try{localStorage.setItem("pr_prev_indicators",JSON.stringify(PREV_INDICATORS));}catch(e){}
+}
+
 function calcLeadingScore(scenarioId){
   const cfg=SCENARIO_CFG[scenarioId];if(!cfg)return null;
   let tw=0,ts=0;
@@ -1161,9 +1179,7 @@ export default function App(){
       var updKeys=Object.keys(macroUpd).filter(function(k){return INDICATORS.hasOwnProperty(k);});
       var macroCount=new Set(updKeys).size;
       if(macroCount>0){
-        ensureDailyBaseline(updKeys);              // baseline = chiusura di ieri, fisso per tutta la giornata
-        updKeys.forEach(function(k){INDICATORS[k]=macroUpd[k];});   // aggiorno SEMPRE i valori correnti
-        try{localStorage.setItem("pr_indicators",JSON.stringify(INDICATORS));}catch(e){}
+        applyIndicatorUpdate(macroUpd, updKeys);   // PREV = ultimo valore DIVERSO (variazione congelata)
         stMacro=macroCount>=totalInd*0.5;
       }
     }
@@ -1201,8 +1217,7 @@ export default function App(){
     const upd=parseMacroText(macroText);
     const n=Object.keys(upd).length;
     if(n===0){setRefreshMsg("Nessun ticker riconosciuto");return;}
-    ensureDailyBaseline(Object.keys(upd));        // stesso baseline giornaliero del refresh
-    Object.keys(upd).forEach(function(k){INDICATORS[k]=upd[k];});
+    applyIndicatorUpdate(upd, Object.keys(upd));   // PREV = ultimo valore DIVERSO (variazione congelata)
     if(!window._macroUpdated)window._macroUpdated={};
     Object.keys(upd).forEach(function(k){window._macroUpdated[k]=true;});
     const SKIP_IND=["tedSpread","euRealYield","deCurve"];
@@ -1391,7 +1406,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v42</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v44</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
