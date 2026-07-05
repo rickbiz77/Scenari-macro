@@ -1026,7 +1026,7 @@ function parseMacroText(text){
 export default function App(){
   const [tab,setTab]=useState("scenarios");
   const [rlDetailOpen,setRlDetailOpen]=useState(null);
-  const [revDays,setRevDays]=useState(function(){try{return JSON.parse(localStorage.getItem("pr_reversal_days"))||{};}catch(e){return {};}});
+  const [revDays,setRevDays]=useState(function(){try{return JSON.parse(localStorage.getItem("pr_reversal_persist"))||{};}catch(e){return {};}});
   const [revOpen,setRevOpen]=useState(false);
   const [sel,setSel]=useState(null);
   const [per,setPer]=useState("y");
@@ -1286,21 +1286,39 @@ export default function App(){
   // ===== Reversal: valori, persistenza giorni-in-zona, punteggio =====
   var revPriceMap=buildPriceMap();
   var getRevVal=function(id,src){return src==="px"?(revPriceMap[id]?revPriceMap[id].p:null):INDICATORS[id];};
+  // Persistenza a TEMPO TRASCORSO (non conta gli aggiornamenti): salvo l'istante di apertura e misuro i giorni passati.
+  // Tolleranza di grazia: un'uscita di zona sotto REV_GRACE_MS non azzera la serie (protegge dai tick di rumore).
+  var REV_GRACE_MS=24*3600*1000;
   useEffect(function(){
-    var today=new Date().toISOString().slice(0,10);
+    var now=Date.now();
     var next=Object.assign({},revDays),changed=false;
     REVERSAL_CFG.forEach(function(c){
       var v=getRevVal(c.id,c.src),dir=null;
       c.zones.forEach(function(z){ if(zoneProx(v,z.op,z.thr,z.near)>=0.5)dir=z.dir; });
-      var prev=next[c.id]||{days:0,date:null,dir:null};
+      var prev=next[c.id]||null;
       if(dir){
-        if(prev.date===today){ if(prev.dir!==dir){next[c.id]={days:1,date:today,dir:dir};changed=true;} }
-        else { var d=(prev.dir===dir?prev.days:0)+1; next[c.id]={days:d,date:today,dir:dir}; changed=true; }
-      } else { if(prev.days!==0||prev.dir!==null){ next[c.id]={days:0,date:today,dir:null}; changed=true; } }
+        // in zona: se stessa direzione mantengo openedAt (e annullo un'eventuale uscita in grazia); altrimenti apro ora
+        if(prev&&prev.dir===dir&&prev.openedAt){ if(prev.leftAt){next[c.id]={openedAt:prev.openedAt,dir:dir,leftAt:null};changed=true;} }
+        else { next[c.id]={openedAt:now,dir:dir,leftAt:null}; changed=true; }
+      } else if(prev&&prev.openedAt){
+        // fuori zona: segno l'uscita; azzero solo se l'uscita dura oltre la grazia
+        if(!prev.leftAt){ next[c.id]={openedAt:prev.openedAt,dir:prev.dir,leftAt:now}; changed=true; }
+        else if(now-prev.leftAt>=REV_GRACE_MS){ delete next[c.id]; changed=true; }
+      }
     });
-    if(changed){ setRevDays(next); try{localStorage.setItem("pr_reversal_days",JSON.stringify(next));}catch(e){} }
+    if(changed){ setRevDays(next); try{localStorage.setItem("pr_reversal_persist",JSON.stringify(next));}catch(e){} }
   },[REVERSAL_CFG.map(function(c){return getRevVal(c.id,c.src);}).join(",")]);
-  var reversalData=calcReversal(getRevVal,revDays);
+  // giorni derivati dal timestamp (frazionari): durante la grazia congelo al valore d'uscita, altrimenti cresco fino ad ora
+  var revDaysDerived=(function(){
+    var now=Date.now(),out={};
+    Object.keys(revDays).forEach(function(id){
+      var p=revDays[id]; if(!p||!p.openedAt)return;
+      var end=p.leftAt?p.leftAt:now;
+      out[id]={days:(end-p.openedAt)/86400000,dir:p.dir};
+    });
+    return out;
+  })();
+  var reversalData=calcReversal(getRevVal,revDaysDerived);
   var revHeadCol=reversalData.headline>=66?"#EF4444":reversalData.headline>=33?"#F59E0B":"#10B981";
   // Scenario "attivo" deciso dai DATI: i 2 con punteggio finale più alto (niente flag a mano)
   const activeIds=[...SCENARIOS].sort((a,b)=>(finalMap[b.id]??-1)-(finalMap[a.id]??-1)).slice(0,2).map(s=>s.id);
