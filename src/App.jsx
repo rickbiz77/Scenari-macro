@@ -1092,6 +1092,7 @@ export default function App(){
   const [selLead,setSelLead]=useState(null);
   const [selRiskBox,setSelRiskBox]=useState(null);
   const [radarTf,setRadarTf]=useState("g");
+  const [pmMode,setPmMode]=useState(function(){try{return localStorage.getItem("pr_pm_mode")||"satellite";}catch(e){return "satellite";}});
   const [refreshing,setRefreshing]=useState(false);
   const [refreshMsg,setRefreshMsg]=useState("");
   const [macroText,setMacroText]=useState("");
@@ -1489,8 +1490,13 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v47</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v48</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
+        </div>
+        <div style={{display:"flex",gap:3,background:"#0a0a14",borderRadius:9,padding:3,border:"1px solid #1f2937"}}>
+          {[{k:"satellite",l:"🛰 SATELLITE"},{k:"play",l:"🎰 PLAY MONEY"}].map(function(o){return (
+            <button key={o.k} onClick={function(){setPmMode(o.k);try{localStorage.setItem("pr_pm_mode",o.k);}catch(e){}}} style={{background:pmMode===o.k?(o.k==="satellite"?"#818cf8":"#F59E0B"):"transparent",border:"none",borderRadius:6,padding:"6px 12px",cursor:"pointer",fontSize:11,fontWeight:800,color:pmMode===o.k?"#0a0a14":"#6b7280",transition:"all .15s"}}>{o.l}</button>
+          );})}
         </div>
       </div>
     </div>
@@ -1955,8 +1961,10 @@ export default function App(){
         if(e.raw!=null&&nzN>1){const rank=(nzSorted.findIndex(x=>x.t===e.t)/(nzN-1))*100;const norm=nzMx!==nzMn?(e.raw-nzMn)/(nzMx-nzMn)*100:50;score=Math.round(rank*0.75+norm*0.25);}
         pool.push({...e,score:score,national:true});
       });
-      const tfKey=radarTf,tfLab={g:"1G",w:"1S",m:"1M",tot:"TOT"};
-      const TOTW={g:0.5,w:0.3,m:0.2};
+      const RADAR_TFS = pmMode==="satellite" ? [{k:"m",l:"1M"},{k:"q",l:"3M"},{k:"s",l:"6M"},{k:"tot",l:"TOT"}] : [{k:"g",l:"1G"},{k:"w",l:"1S"},{k:"m",l:"1M"},{k:"tot",l:"TOT"}];
+      const tfLab={g:"1G",w:"1S",m:"1M",q:"3M",s:"6M",tot:"TOT"};
+      const tfKey = RADAR_TFS.some(function(t){return t.k===radarTf;}) ? radarTf : "tot";
+      const TOTW = pmMode==="satellite" ? {m:0.6,q:0.3,s:0.1} : {g:0.5,w:0.3,m:0.2};
       function tfVal(e){
         if(tfKey!=="tot")return e[tfKey];
         let s=0,tw=0;Object.entries(TOTW).forEach(([k,w])=>{if(e[k]!=null){s+=e[k]*w;tw+=w;}});
@@ -2000,12 +2008,12 @@ export default function App(){
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:6}}>
             <div style={{fontSize:16,fontWeight:800,color:"#f8fafc"}}>RADAR 📡</div>
             <div style={{display:"flex",gap:4}}>
-              {[{k:"g",l:"1G"},{k:"w",l:"1S"},{k:"m",l:"1M"},{k:"tot",l:"TOT"}].map(t=>(
-                <button key={t.k} onClick={()=>setRadarTf(t.k)} style={{background:radarTf===t.k?"#F59E0B":"#1e293b",border:"none",borderRadius:6,padding:"5px 13px",cursor:"pointer",fontSize:11,fontWeight:800,color:radarTf===t.k?"#0a0a14":"#94a3b8"}}>{t.l}</button>
+              {RADAR_TFS.map(t=>(
+                <button key={t.k} onClick={()=>setRadarTf(t.k)} style={{background:tfKey===t.k?"#F59E0B":"#1e293b",border:"none",borderRadius:6,padding:"5px 13px",cursor:"pointer",fontSize:11,fontWeight:800,color:tfKey===t.k?"#0a0a14":"#94a3b8"}}>{t.l}</button>
               ))}
             </div>
           </div>
-          <div style={{fontSize:9,color:"#6b7280"}}>Acceleratori su variazione {tfLab[tfKey]}{tfKey==="tot"?" (1G 50% · 1S 30% · 1M 20%)":""} di prezzo · EMERGENTE = variazione x (100-score)/100 · doppioni rimossi</div>
+          <div style={{fontSize:9,color:"#6b7280"}}>Acceleratori su variazione {tfLab[tfKey]}{tfKey==="tot"?(pmMode==="satellite"?" (1M 60% · 3M 30% · 6M 10%)":" (1G 50% · 1S 30% · 1M 20%)"):""} di prezzo · EMERGENTE = variazione x (100-score)/100 · doppioni rimossi</div>
         </div>
         <div>
           <div style={{background:"#0f172a",border:"1px solid rgba(239,68,68,0.3)",borderRadius:8,padding:"8px 12px",marginBottom:8}}>
