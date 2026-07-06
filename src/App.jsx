@@ -159,8 +159,10 @@ const ETF_NAZIONALI=[
 
 
 // ── MOMENTUM (pesi aggressivi verso breve termine) ────────────────
-const WEIGHTS={w:0.45,m:0.35,q:0.12,s:0.05,y:0.03};
-function calcMomScore(etf){let s=0,tw=0;Object.entries(WEIGHTS).forEach(([k,w])=>{if(etf[k]!=null){s+=etf[k]*w;tw+=w;}});return tw>0?s:null;}
+var PM_MODE="satellite"; // impostato dal componente a ogni render (interruttore Satellite/Play money)
+const WEIGHTS_PLAY={w:0.45,m:0.35,q:0.12,s:0.05,y:0.03};
+const WEIGHTS_SAT={w:0.05,m:0.15,q:0.40,s:0.30,y:0.10};
+function calcMomScore(etf){const W=PM_MODE==="satellite"?WEIGHTS_SAT:WEIGHTS_PLAY;let s=0,tw=0;Object.entries(W).forEach(([k,w])=>{if(etf[k]!=null){s+=etf[k]*w;tw+=w;}});return tw>0?s:null;}
 function calcScenarioMom(sc){
   // In Debasement e Debasement+BTC oro e argento (GLD,GDX,SLV,SIL) restano voci piene
   // ma pesano METÀ ciascuna, per ridurre la sovraesposizione al metallo senza togliere voci.
@@ -190,19 +192,10 @@ function calcAllEtfScores(){
   return raw.map(s=>({...s,rank:rk[s.t],composite:s.raw!=null?(rk[s.t]*0.75+((s.raw-mn)/(mx-mn||1))*100*0.25):null}));
 }
 function calcFinalScore(momentumComposite, leadingScore, scenarioId, history){
-  if(leadingScore===null||leadingScore===undefined) return momentumComposite;
-  let wLead = 0.70;
-  if(history && history.length >= 3){
-    const sorted=[...history].sort((a,b)=>a.week-b.week);
-    const last3=sorted.slice(-3).map(h=>h.scores[scenarioId]).filter(v=>v!=null);
-    if(last3.length===3){
-      const rising=last3[2]>last3[1]&&last3[1]>last3[0];
-      const falling=last3[2]<last3[1]&&last3[1]<last3[0];
-      if(rising)  wLead=0.60;
-      if(falling) wLead=0.80;
-    }
-  }
-  return leadingScore * wLead + momentumComposite * (1-wLead);
+  if(PM_MODE!=="satellite") return momentumComposite;   // Play money: 100% momentum
+  if(leadingScore==null) return momentumComposite;
+  if(momentumComposite==null) return leadingScore;
+  return leadingScore*0.60 + momentumComposite*0.40;      // Satellite: 60% leading · 40% momentum (fisso)
 }
 function calcAvgMom(e){
   const entries=[
@@ -610,10 +603,18 @@ const RISK_MOM_CFG=[
 ];
 function riskMomBlend(e,morning){
   if(!e)return null;
-  const g=e.g,w=e.w;
-  const hasG=g!=null&&!isNaN(g),hasW=w!=null&&!isNaN(w);
+  const g=e.g,w=e.w,m=e.m,q=e.q;
+  const hasG=g!=null&&!isNaN(g),hasW=w!=null&&!isNaN(w),hasM=m!=null&&!isNaN(m),hasQ=q!=null&&!isNaN(q);
   if(morning){return hasW?w:null;}
-  if(hasG&&hasW)return g*0.70+w*0.30;
+  if(PM_MODE==="satellite"){ // 1M 55 · 1S 30 · 3M 15 (normalizzato sui campi presenti)
+    let s=0,tw=0;
+    if(hasM){s+=m*0.55;tw+=0.55;}
+    if(hasW){s+=w*0.30;tw+=0.30;}
+    if(hasQ){s+=q*0.15;tw+=0.15;}
+    if(tw>0)return s/tw;
+    return hasM?m:(hasW?w:null);
+  }
+  if(hasG&&hasW)return g*0.70+w*0.30; // Play money: 1G 70 · 1S 30
   if(hasG)return g;
   if(hasW)return w;
   return null;
@@ -1093,6 +1094,7 @@ export default function App(){
   const [selRiskBox,setSelRiskBox]=useState(null);
   const [radarTf,setRadarTf]=useState("g");
   const [pmMode,setPmMode]=useState(function(){try{return localStorage.getItem("pr_pm_mode")||"satellite";}catch(e){return "satellite";}});
+  PM_MODE=pmMode;
   const [refreshing,setRefreshing]=useState(false);
   const [refreshMsg,setRefreshMsg]=useState("");
   const [macroText,setMacroText]=useState("");
@@ -1490,7 +1492,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v48</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v49</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
         <div style={{display:"flex",gap:3,background:"#0a0a14",borderRadius:9,padding:3,border:"1px solid #1f2937"}}>
@@ -1990,7 +1992,7 @@ export default function App(){
           </div>
           <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
             {[{k:"g",l:"1G"},{k:"w",l:"1S"},{k:"m",l:"1M"},{k:"q",l:"3M"},{k:"s",l:"6M"},{k:"y",l:"1A"},{k:"y2",l:"2A"},{k:"y3",l:"3A"},{k:"y5",l:"5A"}].map(p=>{
-              const hl=tfKey==="tot"?["g","w","m"].includes(p.k):p.k===tfKey;
+              const hl=tfKey==="tot"?(pmMode==="satellite"?["m","q","s"]:["g","w","m"]).includes(p.k):p.k===tfKey;
               return (
               <div key={p.k} style={{flex:1,minWidth:36,background:hl?"rgba(245,158,11,0.12)":"#0a0a14",border:hl?"1px solid rgba(245,158,11,0.45)":"1px solid transparent",borderRadius:5,padding:"5px 4px",textAlign:"center"}}>
                 <div style={{fontSize:7,color:hl?"#F59E0B":"#4b5563",marginBottom:1}}>{p.l}</div>
@@ -2040,15 +2042,9 @@ export default function App(){
       {(()=>{
         const seen=new Set(),allU=[];
         SCENARIOS.forEach(s=>s.etfs.forEach(e=>{if(!seen.has(e.t)){seen.add(e.t);allU.push(e);}}));
-        const top2=[...SCENARIOS].sort((a,b)=>{
-          const aS=(a.avg.s??-999)*0.70+(a.avg.q??-999)*0.30;
-          const bS=(b.avg.s??-999)*0.70+(b.avg.q??-999)*0.30;
-          return bS-aS;
-        }).slice(0,2);
-        const coreTickers=new Set();
-        top2.forEach(s=>s.etfs.forEach(e=>coreTickers.add(e.t)));
-        const coreEtfs=allU.filter(e=>coreTickers.has(e.t)).sort((a,b)=>(etfMap[b.t]?.composite??0)-(etfMap[a.t]?.composite??0));
-        const satelliteEtfs=allU.sort((a,b)=>(etfMap[b.t]?.composite??-999)-(etfMap[a.t]?.composite??-999));
+        const attivi=allU
+          .filter(e=>(etfMap[e.t]?.composite??-1)>50)
+          .sort((a,b)=>(etfMap[b.t]?.composite??-999)-(etfMap[a.t]?.composite??-999));
 
         function EtfCard({e,i,border}){
           const score=etfMap[e.t]?.composite;
@@ -2080,27 +2076,13 @@ export default function App(){
         return <div style={{display:"flex",flexDirection:"column",gap:16}}>
           <div>
             <div style={{background:"#0f172a",border:"1px solid #1e293b",borderRadius:8,padding:"8px 12px",marginBottom:8}}>
-              <div style={{fontSize:11,fontWeight:800,color:"#F59E0B",marginBottom:2}}>CORE</div>
-              <div style={{fontSize:8,color:"#6b7280"}}>
-                Top 2 scenari per 3M+6M: {top2.map(s=><span key={s.id} style={{color:s.color,fontWeight:700,marginRight:6}}>{s.name}</span>)} · ordinati per momentum
-              </div>
+              <div style={{fontSize:11,fontWeight:800,color:"#F59E0B",marginBottom:2}}>ETF ATTIVI</div>
+              <div style={{fontSize:8,color:"#6b7280"}}>Score &gt; 50 · ordinati per score · momentum {pmMode==="satellite"?"lento (satellite)":"veloce (play money)"}</div>
             </div>
-            {coreEtfs.length===0
-              ?<div style={{padding:16,textAlign:"center",fontSize:11,color:"#6b7280"}}>Nessun ETF</div>
+            {attivi.length===0
+              ?<div style={{padding:16,textAlign:"center",fontSize:11,color:"#6b7280"}}>Nessun ETF sopra 50</div>
               :<div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {coreEtfs.map((e,i)=><EtfCard key={e.t} e={e} i={i} border="rgba(245,158,11,0.4)"/>)}
-              </div>
-            }
-          </div>
-          <div>
-            <div style={{background:"#0f172a",border:"1px solid #1e293b",borderRadius:8,padding:"8px 12px",marginBottom:8}}>
-              <div style={{fontSize:11,fontWeight:800,color:"#818cf8",marginBottom:2}}>SATELLITE</div>
-              <div style={{fontSize:8,color:"#6b7280"}}>Tutti gli scenari · ordinati per score</div>
-            </div>
-            {satelliteEtfs.length===0
-              ?<div style={{padding:16,textAlign:"center",fontSize:11,color:"#6b7280"}}>Nessun ETF</div>
-              :<div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {satelliteEtfs.map((e,i)=><EtfCard key={e.t} e={e} i={i} border="rgba(129,140,248,0.4)"/>)}
+                {attivi.map((e,i)=><EtfCard key={e.t} e={e} i={i} border="rgba(245,158,11,0.4)"/>)}
               </div>
             }
           </div>
