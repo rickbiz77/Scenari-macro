@@ -352,6 +352,45 @@ function compositeSignal(id, dir, good, bad){
   return nom*0.60 + var_*0.40;
 }
 
+// ── LENTE PREAVVISO ("dove andiamo"): stessi indicatori della Conferma, ma pesati per RUOLO
+// (chi anticipa conta di più, chi conferma tardi conta poco) e con enfasi 30/70 sulla VARIAZIONE
+// invece che sul livello — perché la svolta di regime si vede dal movimento, non dalla posizione.
+// Ruolo: lead = anticipa (+ MoM prezzi) · coin = coincidente / mercato · lag = YoY realizzato (tardi).
+const IND_ROLE={
+  yieldCurve:'lead',deCurve:'lead',ismNewOrders:'lead',ism:'lead',ismEmployment:'lead',ismPricesPaid:'lead',
+  ifo:'lead',housingStarts:'lead',jobless:'lead',lei:'lead',eujvr:'lead',hySpread:'lead',igSpread:'lead',
+  emSpread:'lead',breakeven:'lead',spx:'lead',sx5e:'lead',bdi:'lead',copperGold:'lead',m2Dxy:'lead',
+  ppiMom:'lead',ppiCoreMom:'lead',cpiMom:'lead',cpiCoreMom:'lead',pceMom:'lead',euCpiMom:'lead',
+  euCpiCoreMom:'lead',euPpiMom:'lead',deppimm:'lead',
+  nfp:'coin',cfnai:'coin',retailSales:'coin',eursyy:'coin',us2y:'coin',us10y:'coin',de02y:'coin',de10y:'coin',
+  realYield:'coin',euRealYield:'coin',euribor:'coin',dxy:'coin',spread2y:'coin',spread10y:'coin',btpBund:'coin',
+  vix:'coin',move:'coin',vvixVix:'coin',pcc:'coin',pcce:'coin',trin:'coin',athi:'coin',atlo:'coin',eurusd:'coin',
+  oil:'coin',crb:'coin',dtb3:'coin',sofr:'coin',
+  pce:'lag',cpi:'lag',ppi:'lag',euCpi:'lag',euPpiYoy:'lag',deppiyy:'lag',euur:'lag'
+};
+const ROLE_MULT={lead:1.5,coin:1.0,lag:0.3};
+// composite Preavviso: 30% livello + 70% variazione (ribaltato vs compositeSignal 60/40)
+function compositeSignalPrev(id, dir, good, bad){
+  const nom=signalScore(INDICATORS[id],dir,good,bad);
+  const curr=INDICATORS[id], prev=PREV_INDICATORS[id];
+  if(prev==null||curr==null||isNaN(prev)||isNaN(curr)||curr===prev) return nom;
+  const var_=variationScore(id,dir,good,bad);
+  return nom*0.30 + var_*0.70;
+}
+// calcPreavviso: come calcLeadingScore, ma peso = w * moltiplicatore-ruolo e composite Preavviso.
+function calcPreavviso(scenarioId){
+  const cfg=SCENARIO_CFG[scenarioId];if(!cfg)return null;
+  let tw=0,ts=0;
+  cfg.forEach(({id,w,dir,good,bad})=>{
+    const v=INDICATORS[id];
+    if(v!=null&&!isNaN(v)){
+      const ww=w*(ROLE_MULT[IND_ROLE[id]||'coin']);
+      ts+=compositeSignalPrev(id,dir,good,bad)*ww; tw+=ww;
+    }
+  });
+  return tw>0?(ts/tw):null;
+}
+
 const SCENARIO_CFG = {
   stagflation: [
     {id:"pce",          w:.14,dir:"high",good:4.0,  bad:2.0},
@@ -1045,6 +1084,7 @@ export default function App(){
   const [tab,setTab]=useState("scenarios");
   const [rlDetailOpen,setRlDetailOpen]=useState(null);
   const [revDays,setRevDays]=useState(function(){try{return JSON.parse(localStorage.getItem("pr_reversal_persist"))||{};}catch(e){return {};}});
+  const [regShiftDays,setRegShiftDays]=useState(function(){try{return JSON.parse(localStorage.getItem("pr_regshift_persist"))||{};}catch(e){return {};}});
   const [revOpen,setRevOpen]=useState(false);
   const [sel,setSel]=useState(null);
   const [per,setPer]=useState("y");
@@ -1335,6 +1375,49 @@ export default function App(){
   })();
   var reversalData=calcReversal(getRevVal,revDaysDerived);
   var revHeadCol=reversalData.headline>=66?"#EF4444":reversalData.headline>=33?"#F59E0B":"#10B981";
+  // ===== CAMBIO REGIME: forbice Conferma(dove sei) vs Preavviso(dove vai) =====
+  var REG_SHIFT_MIN=8;             // spinta minima (punti) per contare come candidato
+  var REG_GRACE_MS=24*3600*1000;   // grazia contro cali momentanei (come Reversal)
+  var regSpinta={};
+  SCENARIOS.forEach(function(s){
+    var c=calcLeadingScore(s.id), p=calcPreavviso(s.id);
+    regSpinta[s.id]=(c!=null&&p!=null)?(p-c):null;   // forbice: quanto il Preavviso supera la Conferma
+  });
+  // scenario corrente = punteggio finale più alto (dove sei ADESSO)
+  var curScen=[...SCENARIOS].sort(function(a,b){return (finalMap[b.id]!=null?finalMap[b.id]:-1)-(finalMap[a.id]!=null?finalMap[a.id]:-1);})[0]||null;
+  // candidati = scenari != corrente con spinta positiva sopra soglia
+  var regCand=[];
+  SCENARIOS.forEach(function(s){
+    if(curScen&&s.id===curScen.id) return;
+    var sp=regSpinta[s.id];
+    if(sp!=null&&sp>=REG_SHIFT_MIN) regCand.push({s:s,spinta:sp});
+  });
+  // persistenza a TEMPO (timestamp, stesso schema del fix Reversal): openedAt quando diventa candidato
+  useEffect(function(){
+    var now=Date.now();
+    var next=Object.assign({},regShiftDays),changed=false;
+    SCENARIOS.forEach(function(s){
+      var sp=regSpinta[s.id];
+      var active=(curScen&&s.id!==curScen.id&&sp!=null&&sp>=REG_SHIFT_MIN);
+      var prev=next[s.id]||null;
+      if(active){
+        if(prev&&prev.openedAt){ if(prev.leftAt){next[s.id]={openedAt:prev.openedAt,leftAt:null};changed=true;} }
+        else { next[s.id]={openedAt:now,leftAt:null}; changed=true; }
+      } else if(prev&&prev.openedAt){
+        if(!prev.leftAt){ next[s.id]={openedAt:prev.openedAt,leftAt:now}; changed=true; }
+        else if(now-prev.leftAt>=REG_GRACE_MS){ delete next[s.id]; changed=true; }
+      }
+    });
+    if(changed){ setRegShiftDays(next); try{localStorage.setItem("pr_regshift_persist",JSON.stringify(next));}catch(e){} }
+  },[SCENARIOS.map(function(s){var sp=regSpinta[s.id];return sp!=null?Math.round(sp):"x";}).join(",")+"|"+(curScen?curScen.id:"")]);
+  // righe: % normalizzata sulla spinta + giorni da openedAt + conferma a 10gg (ordine per %, opzione A)
+  var regTot=regCand.reduce(function(a,x){return a+x.spinta;},0);
+  var regShiftRows=regCand.map(function(x){
+    var pct=regTot>0?(x.spinta/regTot*100):0;
+    var p=regShiftDays[x.s.id], days=0;
+    if(p&&p.openedAt){ var end=p.leftAt?p.leftAt:Date.now(); days=(end-p.openedAt)/86400000; }
+    return {s:x.s,pct:pct,days:days,confirmed:days>=10};
+  }).sort(function(a,b){return b.pct-a.pct;});
   // Scenario "attivo" deciso dai DATI: i 2 con punteggio finale più alto (niente flag a mano)
   const activeIds=[...SCENARIOS].sort((a,b)=>(finalMap[b.id]??-1)-(finalMap[a.id]??-1)).slice(0,2).map(s=>s.id);
   SCENARIOS.forEach(s=>{s.active=activeIds.includes(s.id);});
@@ -1406,7 +1489,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v45</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v47</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
@@ -1759,6 +1842,30 @@ export default function App(){
             })}
           </div>
         </div>}
+        {/* CAMBIO REGIME — forbice Conferma vs Preavviso */}
+        <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:14,padding:20,marginBottom:12}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+            <span style={{fontSize:18}}>📡</span>
+            <div style={{fontSize:13,fontWeight:800,color:"#f8fafc"}}>Cambio regime — dove si sta spostando il macro</div>
+          </div>
+          <div style={{fontSize:10,color:"#6b7280",marginBottom:14}}>Sei in: <span style={{color:curScen?curScen.color:"#94a3b8",fontWeight:800}}>{curScen?curScen.name:"—"}</span> · forbice Conferma↔Preavviso · conferma a 10 giorni</div>
+          {regShiftRows.length===0
+            ? <div style={{textAlign:"center",fontSize:11,color:"#10B981",fontWeight:700,padding:"6px 0"}}>nessuna rotazione in corso</div>
+            : <div>
+              {regShiftRows[0].confirmed && <div style={{textAlign:"center",fontSize:11,fontWeight:900,color:"#10B981",letterSpacing:1,marginBottom:12}}>✓ ROTAZIONE CONFERMATA → {regShiftRows[0].s.name}</div>}
+              {regShiftRows.map(function(r,i){
+                var filled=Math.min(10,Math.floor(r.days));
+                return <div key={r.s.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderTop:i>0?"1px solid #141422":"none"}}>
+                  <div style={{width:104,fontSize:12,fontWeight:800,color:r.s.color}}>→ {r.s.name}</div>
+                  <div style={{width:42,fontFamily:"monospace",fontSize:14,fontWeight:900,color:"#f8fafc",textAlign:"right"}}>{Math.round(r.pct)}%</div>
+                  <div style={{flex:1,display:"flex",gap:2}}>
+                    {Array.from({length:10}).map(function(_,k){return <div key={k} style={{flex:1,height:8,borderRadius:2,background:k<filled?(r.confirmed?"#10B981":r.s.color):"#1f2937"}}/>;})}
+                  </div>
+                  <div style={{width:64,fontSize:10,fontWeight:700,textAlign:"right",color:r.confirmed?"#10B981":"#94a3b8"}}>{r.confirmed?("✓ "+Math.floor(r.days)+"gg"):(Math.floor(r.days)+"/10gg")}</div>
+                </div>;
+              })}
+            </div>}
+        </div>
         {/* GEX - barra orizzontale */}
         <div style={{background:"#0f172a",border:"1px solid #1f2937",borderRadius:14,padding:20,marginBottom:12}}>
           <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
