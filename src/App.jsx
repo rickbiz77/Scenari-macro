@@ -1406,7 +1406,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v44</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v45</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
       </div>
@@ -2695,78 +2695,83 @@ function arrowColor(id, dir){
   return "#F59E0B";
 }
 
-// Colore valore secondo range soglia per indicatore
+// ── COLORE VALORE: fonte unica. Ogni indicatore ha una lista di bande [soglia,colore].
+// Il colore NON e' mai scritto a mano nella logica: si legge da questa tabella, cosi'
+// non puo' piu' scollarsi dalla legenda. '*' = banda finale (catch-all). Verificata vs desc.
+const IND_COL={g:"#10B981",y:"#F59E0B",o:"#F97316",r:"#EF4444",dr:"#7f1d1d",b:"#0EA5E9",lg:"#6ee7b7"};
+const IND_BANDS={
+  vix:[[15,'g'],[25,'y'],[35,'r'],['*','dr']],
+  move:[[80,'g'],[100,'y'],['*','r']],
+  ism:[[43,'dr'],[50,'r'],[55,'g'],['*','b']],
+  cpi:[[2,'g'],[3,'y'],[5,'r'],['*','dr']],
+  ppi:[[2,'g'],[3,'y'],[6,'r'],['*','dr']],
+  pce:[[2,'g'],[2.5,'y'],[3.5,'r'],['*','dr']],
+  tedSpread:[[0.2,'g'],[0.4,'y'],['*','r']],
+  realYield:[[0,'b'],[0.5,'g'],[1.5,'y'],['*','r']],
+  breakeven:[[2,'g'],[2.5,'y'],[3,'r'],['*','dr']],
+  yieldCurve:[[0,'r'],[1,'y'],[1.5,'lg'],['*','g']],
+  hySpread:[[3,'g'],[5,'y'],[8,'r'],['*','dr']],
+  igSpread:[[0.8,'g'],[1.2,'y'],[2,'r'],['*','dr']],
+  emSpread:[[3,'g'],[5,'y'],['*','r']],
+  dxy:[[95,'r'],[100,'y'],[105,'g'],['*','r']],
+  oil:[[55,'g'],[80,'y'],[100,'r'],['*','dr']],
+  ifo:[[85,'r'],[95,'y'],[105,'g'],['*','b']],
+  euCpi:[[2,'g'],[3,'y'],['*','r']],
+  lei:[[99,'r'],[100.85,'y'],['*','g']],
+  cfnai:[[-0.7,'r'],[0,'y'],[0.3,'g'],['*','b']],
+  jobless:[[220,'g'],[280,'y'],[350,'r'],['*','dr']],
+  pcc:[[0.7,'b'],[0.9,'g'],[1.1,'y'],['*','r']],
+  pcce:[[0.5,'b'],[0.7,'g'],[0.9,'y'],['*','r']],
+  copperGold:[[0.0015,'r'],[0.0025,'y'],['*','g']],
+  crb:[[300,'g'],[380,'y'],['*','r']],
+  bdi:[[1000,'r'],[2000,'y'],['*','g']],
+  ismNewOrders:[[45,'r'],[50,'o'],[55,'g'],['*','b']],
+  ismEmployment:[[44,'r'],[50,'y'],[53,'g'],['*','b']],
+  ismPricesPaid:[[40,'g'],[55,'r'],[70,'o'],['*','r']],
+  retailSales:[[1,'r'],[3,'y'],['*','g']],
+  housingStarts:[[1200,'r'],[1400,'y'],['*','g']],
+  m2Dxy:[[210,'r'],[225,'y'],['*','g']],
+  us2y:[[3,'g'],[4,'y'],['*','r']],
+  euribor:[[2,'g'],[3,'y'],['*','r']],
+  nfp:[[100,'r'],[220,'y'],['*','g']],
+  ppiMom:[[0,'g'],[0.3,'y'],['*','r']],
+  ppiCoreMom:[[0,'g'],[0.25,'y'],['*','r']],
+  cpiMom:[[0.1,'g'],[0.2,'y'],['*','r']],
+  cpiCoreMom:[[0.17,'g'],[0.25,'y'],['*','r']],
+  euCpiMom:[[0.1,'g'],[0.3,'y'],['*','r']],
+  euCpiCoreMom:[[0.1,'g'],[0.25,'y'],['*','r']],
+  euPpiMom:[[0,'g'],[0.3,'y'],['*','r']],
+  euPpiYoy:[[1,'g'],[3,'y'],['*','r']],
+  de02y:[[2,'g'],[3,'y'],['*','r']],
+  pceMom:[[0.15,'g'],[0.25,'y'],['*','r']],
+  dtb3:[[3,'g'],[4,'y'],['*','r']],
+  sofr:[[3,'g'],[4,'y'],['*','r']],
+  us10y:[[2.5,'g'],[4.0,'y'],['*','r']],
+  de10y:[[1.5,'g'],[3,'y'],['*','r']],
+  deCurve:[[0,'r'],[0.5,'y'],['*','g']],
+  euRealYield:[[0,'b'],[0.5,'g'],[1,'y'],['*','r']],
+  btpBund:[[0.6,'g'],[1.0,'y'],[1.5,'r'],['*','dr']],
+  euur:[[5.5,'r'],[7,'g'],[9,'r'],['*','r']],
+  eujvr:[[1.5,'g'],[2.5,'y'],['*','r']],
+  eurusd:[[1.05,'r'],[1.15,'y'],['*','g']],
+  sx5e:[[4000,'r'],[5000,'y'],['*','g']],
+  vvixVix:[[4.5,'g'],[5.5,'y'],['*','r']],
+  deppimm:[[0,'g'],[0.3,'y'],['*','r']],
+  deppiyy:[[1,'g'],[3,'y'],['*','r']],
+  eursyy:[[0,'r'],[2,'y'],['*','g']],
+  trin:[[0.7,'b'],[1.0,'g'],[1.5,'y'],['*','r']],
+  athi:[[180,'r'],[520,'y'],['*','g']],
+  atlo:[[120,'g'],[440,'y'],['*','r']],
+  spx:[[5000,'r'],[6500,'y'],['*','g']],
+};
 function valueColor(id, v){
   if(v===null||v===undefined) return "#6b7280";
-  switch(id){
-    case "vix":        return v<15?"#10B981":v<25?"#F59E0B":v<35?"#EF4444":"#7f1d1d";
-    case "move":       return v<80?"#10B981":v<100?"#F59E0B":"#EF4444";
-    case "ism":        return v<43?"#7f1d1d":v<50?"#EF4444":v<55?"#10B981":"#0EA5E9";
-    case "cpi":        return v<2?"#10B981":v<3?"#F59E0B":v<5?"#EF4444":"#7f1d1d";
-    case "ppi":        return v<2?"#10B981":v<3?"#F59E0B":v<6?"#EF4444":"#7f1d1d";
-    case "pce":        return v<2?"#10B981":v<2.5?"#F59E0B":v<3.5?"#EF4444":"#7f1d1d";
-    case "tedSpread":  return v<0.2?"#10B981":v<0.4?"#F59E0B":"#EF4444";
-    case "realYield":  return v<0?"#0EA5E9":v<0.5?"#10B981":v<1.5?"#F59E0B":"#EF4444";
-    case "breakeven":  return v<2?"#10B981":v<2.5?"#F59E0B":v<3?"#EF4444":"#7f1d1d";
-    case "yieldCurve": return v<0?"#EF4444":v<1?"#F59E0B":v<1.5?"#6ee7b7":"#10B981";
-    case "hySpread":   return v<3?"#10B981":v<5?"#F59E0B":v<8?"#EF4444":"#7f1d1d";
-    case "igSpread":   return v<0.8?"#10B981":v<1.2?"#F59E0B":v<2?"#EF4444":"#7f1d1d";
-    case "emSpread":   return v<3?"#10B981":v<5?"#F59E0B":"#EF4444";
-    case "dxy":        return v<95?"#EF4444":v<100?"#F59E0B":v<105?"#10B981":"#EF4444";
-    case "oil":        return v<55?"#10B981":v<80?"#EF4444":v<100?"#EF4444":"#7f1d1d";
-    case "ifo":        return v<85?"#EF4444":v<95?"#F59E0B":v<105?"#10B981":"#0EA5E9";
-    case "euCpi":      return v<2?"#10B981":v<3?"#F59E0B":"#EF4444";
-    case "lei":        return v<99?"#EF4444":v<100.85?"#F59E0B":"#10B981";
-    case "cfnai":      return v<-0.7?"#EF4444":v<0?"#F59E0B":v<0.3?"#10B981":"#0EA5E9";
-    case "jobless":    return v<220?"#10B981":v<280?"#F59E0B":v<350?"#EF4444":"#7f1d1d";
-    case "pcc":        return v<0.7?"#0EA5E9":v<0.9?"#10B981":v<1.1?"#F59E0B":"#EF4444";
-    case "pcce":       return v<0.5?"#0EA5E9":v<0.7?"#10B981":v<0.9?"#F59E0B":"#EF4444";
-    case "copperGold": return v<0.0015?"#EF4444":v<0.0025?"#F59E0B":"#10B981";
-    case "crb":        return v<300?"#10B981":v<380?"#EF4444":"#EF4444";
-    case "bdi":        return v<1000?"#EF4444":v<2000?"#EF4444":"#10B981";
-    case "ismNewOrders":  return v<45?"#EF4444":v<50?"#F97316":v<55?"#10B981":"#0EA5E9";
-    case "ismEmployment": return v<44?"#EF4444":v<50?"#F59E0B":v<53?"#10B981":"#0EA5E9";
-    case "ismPricesPaid": return v<40?"#10B981":v<55?"#EF4444":v<70?"#F97316":"#EF4444";
-    case "retailSales":  return v<1?"#EF4444":v<3?"#EF4444":"#10B981";
-    case "housingStarts":return v<1200?"#EF4444":v<1400?"#F59E0B":"#10B981";
-    case "m2Dxy":        return v<210?"#EF4444":v<220?"#EF4444":"#10B981";
-    case "us2y":         return v<3?"#10B981":v<4?"#F59E0B":"#EF4444";
-    case "euribor":      return v<2?"#10B981":v<3?"#F59E0B":"#EF4444";
-    case "nfp":          return v<100?"#EF4444":v<220?"#F59E0B":"#10B981";
-    case "ppiMom":       return v<0?"#10B981":v<0.3?"#EF4444":"#EF4444";
-    case "ppiCoreMom":   return v<0?"#10B981":v<0.25?"#EF4444":"#EF4444";
-    case "cpiMom":       return v<0?"#10B981":v<0.2?"#EF4444":"#EF4444";
-    case "cpiCoreMom":   return v<0?"#10B981":v<0.2?"#EF4444":"#EF4444";
-    case "euCpiMom":     return v<0?"#10B981":v<0.3?"#EF4444":"#EF4444";
-    case "euCpiCoreMom": return v<0?"#10B981":v<0.25?"#EF4444":"#EF4444";
-    case "euPpiMom":     return v<0?"#10B981":v<0.3?"#EF4444":"#EF4444";
-    case "euPpiYoy":     return v<1?"#10B981":v<3?"#EF4444":"#EF4444";
-    case "de02y":        return v<2?"#10B981":v<3?"#F59E0B":"#EF4444";
-    case "spread2y":     return v>1.5?"#10B981":v>0.8?"#F59E0B":"#EF4444";
-    case "spread10y":    return v>1.5?"#10B981":v>0.8?"#F59E0B":"#EF4444";
-    case "pceMom":       return v<0?"#10B981":v<0.2?"#EF4444":"#EF4444";
-    case "dtb3":         return v<3?"#10B981":v<4?"#F59E0B":"#EF4444";
-    case "sofr":         return v<3?"#10B981":v<4?"#F59E0B":"#EF4444";
-    case "us10y":        return v<2.5?"#10B981":v<4.0?"#F59E0B":"#EF4444";
-    case "de10y":        return v<1.5?"#10B981":v<3?"#F59E0B":"#EF4444";
-    case "deCurve":      return v<0?"#EF4444":v<0.5?"#F59E0B":"#10B981";
-    case "euRealYield":  return v<0?"#0EA5E9":v<0.5?"#10B981":v<1.5?"#EF4444":"#EF4444";
-    case "btpBund":      return v<0.6?"#10B981":v<1.0?"#F59E0B":v<1.5?"#EF4444":"#7f1d1d";
-    case "euur":         return v<5.5?"#EF4444":v<7?"#10B981":v<9?"#EF4444":"#EF4444";
-    case "eujvr":        return v<1.5?"#10B981":v<2.5?"#F59E0B":"#EF4444";
-    case "eurusd":       return v<1.05?"#EF4444":v<1.10?"#EF4444":"#10B981";
-    case "sx5e":         return v<4000?"#EF4444":v<5000?"#F59E0B":"#10B981";
-    case "vvixVix":      return v<4.5?"#10B981":v<5.5?"#F59E0B":"#EF4444";
-    case "deppimm":      return v<0?"#10B981":v<0.3?"#EF4444":"#EF4444";
-    case "deppiyy":      return v<1?"#10B981":v<3?"#EF4444":"#EF4444";
-    case "eursyy":       return v<0?"#EF4444":v<2?"#F59E0B":"#10B981";
-    case "trin":         return v<0.7?"#0EA5E9":v<1.0?"#10B981":v<1.5?"#F59E0B":"#EF4444";
-    case "athi":         return v<180?"#EF4444":v<520?"#F59E0B":"#10B981";
-    case "atlo":         return v<120?"#10B981":v<440?"#F59E0B":"#EF4444";
-    case "spx":          return v<5000?"#EF4444":v<6500?"#EF4444":"#10B981";
-    case "dtb3sofr":   {var a=Math.abs(v);return a<0.1?"#10B981":a<0.25?"#F59E0B":"#EF4444";}
-    default:           return "#94a3b8";
-  }
+  if(id==="spread2y"||id==="spread10y") return v>1.5?"#10B981":v>0.8?"#F59E0B":"#EF4444";
+  if(id==="dtb3sofr"){var a=Math.abs(v);return a<0.1?"#10B981":a<0.25?"#F59E0B":"#EF4444";}
+  var bands=IND_BANDS[id];
+  if(!bands) return "#94a3b8";
+  for(var i=0;i<bands.length;i++){ if(bands[i][0]==="*"||v<bands[i][0]) return IND_COL[bands[i][1]]; }
+  return "#94a3b8";
 }
 
 const IND_META = {
