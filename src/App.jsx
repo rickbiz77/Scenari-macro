@@ -223,7 +223,7 @@ function ScorePill({v,size="sm"}){
   const c=scoreColor(v),fs=size==="lg"?14:10;
   return <span style={{background:c+"22",border:"1px solid "+c,borderRadius:5,padding:size==="lg"?"4px 6px":"2px 5px",fontFamily:"monospace",fontSize:fs,fontWeight:800,color:c,minWidth:size==="lg"?52:0,display:"inline-block",textAlign:"center"}}>{Math.round(v)}</span>;
 }
-const PERS=[{k:"w",l:"1S"},{k:"m",l:"1M"},{k:"q",l:"3M"},{k:"s",l:"6M"},{k:"y",l:"1A"},{k:"y2",l:"2A"},{k:"y3",l:"3A"},{k:"y5",l:"5A"}];
+const PERS=[{k:"g",l:"1G"},{k:"w",l:"1S"},{k:"m",l:"1M"},{k:"q",l:"3M"},{k:"s",l:"6M"},{k:"y",l:"1A"},{k:"y2",l:"2A"},{k:"y3",l:"3A"},{k:"y5",l:"5A"}];
 function Pct({v}){
   if(v===null||v===undefined)return <span style={{color:"#374151"}}>—</span>;
   return <span style={{color:v>=0?"#10B981":"#EF4444",fontFamily:"monospace",fontSize:11,fontWeight:700}}>{v>=0?"+":""}{v.toFixed(2)}%</span>;
@@ -1492,7 +1492,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v50</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v51</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
         <div style={{display:"flex",gap:3,background:"#0a0a14",borderRadius:9,padding:3,border:"1px solid #1f2937"}}>
@@ -1513,12 +1513,10 @@ export default function App(){
       <div style={{fontSize:8,color:"#6b7280",marginBottom:12,letterSpacing:1}}>ORDINATO PER SCORE FINALE ↓ ({pmMode==="satellite"?"60% leading + 40% mom":"100% momentum"})</div>
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
         {(()=>{
-          const sortedByCore=[...SCENARIOS].sort((a,b)=>{
-            const aS=(a.avg.s??-999)*0.70+(a.avg.q??-999)*0.30;
-            const bS=(b.avg.s??-999)*0.70+(b.avg.q??-999)*0.30;
-            return bS-aS;
-          });
-          const coreIds=new Set(sortedByCore.slice(0,2).map(x=>x.id));
+          const rankedC=[...SCENARIOS].filter(x=>finalMap[x.id]!=null).sort((a,b)=>finalMap[b.id]-finalMap[a.id]);
+          const coreScen=rankedC.slice(0,2);
+          if((finalMap["debasement"]??-1)>=50){const dbC=SCENARIOS.find(x=>x.id==="debasement");if(dbC&&!coreScen.some(x=>x.id==="debasement"))coreScen.push(dbC);}
+          const coreIds=new Set(coreScen.map(x=>x.id));
           return sortedByFinal.map((s,rank)=>{
           const mom=momMap[s.id]?.composite,lead=leadMap[s.id],final=finalMap[s.id];
           const delta=getFinalDeltaPct(s.id);
@@ -1554,6 +1552,7 @@ export default function App(){
     </div>}
 
     {tab==="scenarios"&&sel&&sc&&<div>
+      {(()=>{ if(sc.avg&&sc.avg.g==null){ const pm=buildPriceMap(); const gs=(sc.etfs||[]).map(e=>pm[e.t]&&pm[e.t].g).filter(v=>v!=null&&!isNaN(v)); sc.avg.g=gs.length?gs.reduce((a,b)=>a+b,0)/gs.length:null; } return null; })()}
       <button onClick={()=>setSel(null)} style={{background:"none",border:"1px solid #374151",color:"#94a3b8",borderRadius:5,padding:"4px 10px",cursor:"pointer",fontSize:10,marginBottom:12}}>← Indietro</button>
       <div style={{background:"#0f172a",border:"1px solid "+sc.color,borderRadius:10,padding:12,marginBottom:12,boxShadow:"0 0 18px "+sc.color+"33"}}>
         <div style={{fontSize:8,color:sc.color,letterSpacing:3,fontWeight:700}}>{sc.name}</div>
@@ -1576,7 +1575,7 @@ export default function App(){
           })()}
         </div>
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-          {[{k:"w",l:"1S"},{k:"m",l:"1M"},{k:"q",l:"3M"},{k:"s",l:"6M"}].map(p=> (
+          {[{k:"g",l:"1G"},{k:"w",l:"1S"},{k:"m",l:"1M"},{k:"q",l:"3M"},{k:"s",l:"6M"}].map(p=> (
             <div key={p.k} style={{background:"#0a0a14",borderRadius:6,padding:"6px 10px",textAlign:"center"}}>
               <div style={{fontSize:8,color:"#4b5563",marginBottom:2}}>Media {p.l}</div>
               <div style={{fontFamily:"monospace",fontSize:13,fontWeight:800,color:sc.avg[p.k]!=null&&sc.avg[p.k]>=0?"#10B981":"#EF4444"}}>
@@ -1664,7 +1663,7 @@ export default function App(){
                   <PillRow e={e} score={score} size="lg"/>
                 </div>
                 <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                  {[{k:"w",l:"1S"},{k:"m",l:"1M"},{k:"q",l:"3M"},{k:"s",l:"6M"},{k:"y",l:"1A"},{k:"y5",l:"5A"}].map(p=>(
+                  {[{k:"g",l:"1G"},{k:"w",l:"1S"},{k:"m",l:"1M"},{k:"q",l:"3M"},{k:"s",l:"6M"},{k:"y",l:"1A"},{k:"y5",l:"5A"}].map(p=>(
                     <div key={p.k} style={{flex:1,minWidth:36,background:"#0a0a14",borderRadius:5,padding:"5px 4px",textAlign:"center"}}>
                       <div style={{fontSize:7,color:"#4b5563",marginBottom:1}}>{p.l}</div>
                       <div style={{fontFamily:"monospace",fontSize:10,fontWeight:700,color:e[p.k]!=null&&e[p.k]>=0?"#10B981":"#EF4444"}}>
