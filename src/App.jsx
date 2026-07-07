@@ -1492,7 +1492,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v51</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v52</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
         <div style={{display:"flex",gap:3,background:"#0a0a14",borderRadius:9,padding:3,border:"1px solid #1f2937"}}>
@@ -1949,7 +1949,11 @@ export default function App(){
 
     {tab==="radar"&&(()=>{
       const seenR=new Set(),pool=[];
-      SCENARIOS.forEach(s=>s.etfs.forEach(e=>{if(!seenR.has(e.t)){seenR.add(e.t);pool.push({...e,score:etfMap[e.t]?.composite??null,national:false});}}));
+      const rankedR=[...SCENARIOS].filter(s=>finalMap[s.id]!=null).sort((a,b)=>finalMap[b.id]-finalMap[a.id]);
+      const inclScenR=rankedR.slice(0,2);
+      if((finalMap["debasement"]??-1)>=50){const dbR=SCENARIOS.find(s=>s.id==="debasement");if(dbR&&!inclScenR.some(s=>s.id==="debasement"))inclScenR.push(dbR);}
+      const inclTkR=new Set();inclScenR.forEach(s=>s.etfs.forEach(e=>inclTkR.add(e.t)));
+      SCENARIOS.forEach(s=>s.etfs.forEach(e=>{if(seenR.has(e.t))return;if(pmMode==="satellite"&&!inclTkR.has(e.t))return;seenR.add(e.t);pool.push({...e,score:etfMap[e.t]?.composite??null,national:false});}));
       const Wn=PM_MODE==="satellite"?WEIGHTS_SAT:WEIGHTS_PLAY;
       const nzRaw=ETF_NAZIONALI.map(e=>{let s=0,tw=0;Object.entries(Wn).forEach(([k,w])=>{if(e[k]!=null){s+=e[k]*w;tw+=w;}});return{...e,raw:tw>0?s/tw:null};});
       const nzVals=nzRaw.map(e=>e.raw).filter(v=>v!=null);
@@ -2046,7 +2050,7 @@ export default function App(){
         if((finalMap["debasement"]??-1)>=50){const db=SCENARIOS.find(s=>s.id==="debasement");if(db&&!inclScen.some(s=>s.id==="debasement"))inclScen.push(db);}
         const inclTk=new Set();inclScen.forEach(s=>s.etfs.forEach(e=>inclTk.add(e.t)));
         const attivi=allU
-          .filter(e=>inclTk.has(e.t)&&(etfMap[e.t]?.composite??-1)>50)
+          .filter(e=>{const sc=(etfMap[e.t]?.composite??-1); return pmMode==="satellite"?(inclTk.has(e.t)&&sc>50):(sc>=50);})
           .sort((a,b)=>(etfMap[b.t]?.composite??-999)-(etfMap[a.t]?.composite??-999));
 
         function EtfCard({e,i,border}){
@@ -2080,7 +2084,7 @@ export default function App(){
           <div>
             <div style={{background:"#0f172a",border:"1px solid #1e293b",borderRadius:8,padding:"8px 12px",marginBottom:8}}>
               <div style={{fontSize:11,fontWeight:800,color:"#F59E0B",marginBottom:2}}>ETF ATTIVI</div>
-              <div style={{fontSize:8,color:"#6b7280"}}>1°+2° scenario + debasement (se ≥50) · score&gt;50 · ordinati · momentum {pmMode==="satellite"?"lento (satellite)":"veloce (play money)"}</div>
+              <div style={{fontSize:8,color:"#6b7280"}}>{pmMode==="satellite"?"1°+2° scenario + debasement (se ≥50) · score>50":"tutti gli ETF · score≥50"} · ordinati · momentum {pmMode==="satellite"?"lento (satellite)":"veloce (play money)"}</div>
             </div>
             {attivi.length===0
               ?<div style={{padding:16,textAlign:"center",fontSize:11,color:"#6b7280"}}>Nessun ETF sopra 50</div>
