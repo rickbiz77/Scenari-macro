@@ -606,13 +606,13 @@ function riskMomBlend(e,morning){
   const g=e.g,w=e.w,m=e.m,q=e.q;
   const hasG=g!=null&&!isNaN(g),hasW=w!=null&&!isNaN(w),hasM=m!=null&&!isNaN(m),hasQ=q!=null&&!isNaN(q);
   if(morning){return hasW?w:null;}
-  if(PM_MODE==="satellite"){ // 1M 55 · 1S 30 · 3M 15 (normalizzato sui campi presenti)
+  if(PM_MODE==="satellite"){ // 1M 55 · 1S 30 · 3M 15, normalizzato per orizzonte (radice del tempo) per non gonfiare
     let s=0,tw=0;
-    if(hasM){s+=m*0.55;tw+=0.55;}
-    if(hasW){s+=w*0.30;tw+=0.30;}
-    if(hasQ){s+=q*0.15;tw+=0.15;}
+    if(hasM){s+=(m/4.58)*0.55;tw+=0.55;}  // 1M / sqrt(21)
+    if(hasW){s+=(w/2.24)*0.30;tw+=0.30;}  // 1S / sqrt(5)
+    if(hasQ){s+=(q/7.94)*0.15;tw+=0.15;}  // 3M / sqrt(63)
     if(tw>0)return s/tw;
-    return hasM?m:(hasW?w:null);
+    return hasM?m/4.58:(hasW?w/2.24:null);
   }
   if(hasG&&hasW)return g*0.70+w*0.30; // Play money: 1G 70 · 1S 30
   if(hasG)return g;
@@ -1492,7 +1492,7 @@ export default function App(){
     <div style={{marginBottom:14}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8}}>
         <div>
-          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v49</div>
+          <div style={{fontSize:8,letterSpacing:4,color:"#F59E0B",textTransform:"uppercase",marginBottom:3}}>PORTAFOGLI RADAR · CALC v50</div>
           <h1 style={{fontSize:18,fontWeight:800,margin:0,color:"#f8fafc"}}>Macro Scenari</h1>
         </div>
         <div style={{display:"flex",gap:3,background:"#0a0a14",borderRadius:9,padding:3,border:"1px solid #1f2937"}}>
@@ -1510,7 +1510,7 @@ export default function App(){
     </div>
 
     {tab==="scenarios"&&!sel&&<div>
-      <div style={{fontSize:8,color:"#6b7280",marginBottom:12,letterSpacing:1}}>ORDINATO PER SCORE FINALE ↓ (70% LEADING + 30% MOM (modulato))</div>
+      <div style={{fontSize:8,color:"#6b7280",marginBottom:12,letterSpacing:1}}>ORDINATO PER SCORE FINALE ↓ ({pmMode==="satellite"?"60% leading + 40% mom":"100% momentum"})</div>
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
         {(()=>{
           const sortedByCore=[...SCENARIOS].sort((a,b)=>{
@@ -1701,7 +1701,7 @@ export default function App(){
 
         {/* Risk Mom (sx) + Risk Lead (dx) */}
         <div style={{display:"flex",gap:12,marginBottom:12}}>
-          <MiniBox title="Risk Mom" sub="70% daily + 30% settimanale (gate orario sempre attivo)" score={riskMomScore} col={momCol} onClick={()=>setRlDetailOpen(rlDetailOpen==="mom"?null:"mom")} open={rlDetailOpen==="mom"}/>
+          <MiniBox title="Risk Mom" sub={pmMode==="satellite"?"1M 55 · 1S 30 · 3M 15 · normalizzato orizzonte":"1G 70 · 1S 30 (gate orario attivo)"} score={riskMomScore} col={momCol} onClick={()=>setRlDetailOpen(rlDetailOpen==="mom"?null:"mom")} open={rlDetailOpen==="mom"}/>
           <MiniBox title="Risk Lead" sub="Score macro da 60 indicatori (leading, lento)" score={riskLeadScore} col={leadCol} onClick={()=>setRlDetailOpen(rlDetailOpen==="lead"?null:"lead")} open={rlDetailOpen==="lead"}/>
         </div>
 
@@ -1951,7 +1951,7 @@ export default function App(){
     {tab==="radar"&&(()=>{
       const seenR=new Set(),pool=[];
       SCENARIOS.forEach(s=>s.etfs.forEach(e=>{if(!seenR.has(e.t)){seenR.add(e.t);pool.push({...e,score:etfMap[e.t]?.composite??null,national:false});}}));
-      const Wn={w:0.45,m:0.35,q:0.12,s:0.05,y:0.03};
+      const Wn=PM_MODE==="satellite"?WEIGHTS_SAT:WEIGHTS_PLAY;
       const nzRaw=ETF_NAZIONALI.map(e=>{let s=0,tw=0;Object.entries(Wn).forEach(([k,w])=>{if(e[k]!=null){s+=e[k]*w;tw+=w;}});return{...e,raw:tw>0?s/tw:null};});
       const nzVals=nzRaw.map(e=>e.raw).filter(v=>v!=null);
       const nzMn=nzVals.length?Math.min(...nzVals):0,nzMx=nzVals.length?Math.max(...nzVals):0;
@@ -2042,8 +2042,12 @@ export default function App(){
       {(()=>{
         const seen=new Set(),allU=[];
         SCENARIOS.forEach(s=>s.etfs.forEach(e=>{if(!seen.has(e.t)){seen.add(e.t);allU.push(e);}}));
+        const rankedScen=[...SCENARIOS].filter(s=>finalMap[s.id]!=null).sort((a,b)=>finalMap[b.id]-finalMap[a.id]);
+        const inclScen=rankedScen.slice(0,2);
+        if((finalMap["debasement"]??-1)>=50){const db=SCENARIOS.find(s=>s.id==="debasement");if(db&&!inclScen.some(s=>s.id==="debasement"))inclScen.push(db);}
+        const inclTk=new Set();inclScen.forEach(s=>s.etfs.forEach(e=>inclTk.add(e.t)));
         const attivi=allU
-          .filter(e=>(etfMap[e.t]?.composite??-1)>50)
+          .filter(e=>inclTk.has(e.t)&&(etfMap[e.t]?.composite??-1)>50)
           .sort((a,b)=>(etfMap[b.t]?.composite??-999)-(etfMap[a.t]?.composite??-999));
 
         function EtfCard({e,i,border}){
@@ -2061,7 +2065,7 @@ export default function App(){
               <PillRow e={e} score={score} size="lg"/>
             </div>
             <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-              {[{k:"w",l:"1S"},{k:"m",l:"1M"},{k:"q",l:"3M"},{k:"s",l:"6M"},{k:"y",l:"1A"},{k:"y2",l:"2A"},{k:"y3",l:"3A"},{k:"y5",l:"5A"}].map(p=>(
+              {[{k:"g",l:"1G"},{k:"w",l:"1S"},{k:"m",l:"1M"},{k:"q",l:"3M"},{k:"s",l:"6M"},{k:"y",l:"1A"},{k:"y2",l:"2A"},{k:"y3",l:"3A"},{k:"y5",l:"5A"}].map(p=>(
                 <div key={p.k} style={{flex:1,minWidth:36,background:"#0a0a14",borderRadius:5,padding:"5px 4px",textAlign:"center"}}>
                   <div style={{fontSize:7,color:"#4b5563",marginBottom:1}}>{p.l}</div>
                   <div style={{fontFamily:"monospace",fontSize:10,fontWeight:700,color:e[p.k]!=null&&e[p.k]>=0?"#10B981":"#EF4444"}}>
@@ -2077,7 +2081,7 @@ export default function App(){
           <div>
             <div style={{background:"#0f172a",border:"1px solid #1e293b",borderRadius:8,padding:"8px 12px",marginBottom:8}}>
               <div style={{fontSize:11,fontWeight:800,color:"#F59E0B",marginBottom:2}}>ETF ATTIVI</div>
-              <div style={{fontSize:8,color:"#6b7280"}}>Score &gt; 50 · ordinati per score · momentum {pmMode==="satellite"?"lento (satellite)":"veloce (play money)"}</div>
+              <div style={{fontSize:8,color:"#6b7280"}}>1°+2° scenario + debasement (se ≥50) · score&gt;50 · ordinati · momentum {pmMode==="satellite"?"lento (satellite)":"veloce (play money)"}</div>
             </div>
             {attivi.length===0
               ?<div style={{padding:16,textAlign:"center",fontSize:11,color:"#6b7280"}}>Nessun ETF sopra 50</div>
@@ -2094,7 +2098,7 @@ export default function App(){
       {(()=>{
         const nazRaw=ETF_NAZIONALI.map(e=>{
           let s=0,tw=0;
-          const W={w:0.45,m:0.35,q:0.12,s:0.05,y:0.03};
+          const W=PM_MODE==="satellite"?WEIGHTS_SAT:WEIGHTS_PLAY;
           Object.entries(W).forEach(([k,w])=>{if(e[k]!=null){s+=e[k]*w;tw+=w;}});
           return{...e,raw:tw>0?s/tw:null};
         });
@@ -2123,7 +2127,7 @@ export default function App(){
               <PillRow e={e} score={e.score} national size="lg"/>
             </div>
             <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-              {[{k:"w",l:"1S"},{k:"m",l:"1M"},{k:"q",l:"3M"},{k:"s",l:"6M"},{k:"y",l:"1A"},{k:"y2",l:"2A"},{k:"y3",l:"3A"},{k:"y5",l:"5A"}].map(p=>(
+              {[{k:"g",l:"1G"},{k:"w",l:"1S"},{k:"m",l:"1M"},{k:"q",l:"3M"},{k:"s",l:"6M"},{k:"y",l:"1A"},{k:"y2",l:"2A"},{k:"y3",l:"3A"},{k:"y5",l:"5A"}].map(p=>(
                 <div key={p.k} style={{flex:1,minWidth:36,background:"#0a0a14",borderRadius:5,padding:"5px 4px",textAlign:"center"}}>
                   <div style={{fontSize:7,color:"#4b5563",marginBottom:1}}>{p.l}</div>
                   <div style={{fontFamily:"monospace",fontSize:10,fontWeight:700,color:e[p.k]!=null&&e[p.k]>=0?"#10B981":"#EF4444"}}>
@@ -2540,7 +2544,7 @@ export default function App(){
       </div>
 
       <div style={{background:"#0f172a",border:"1px solid #F59E0B44",borderRadius:10,padding:14,boxShadow:"0 0 12px rgba(245,158,11,0.1)"}}>
-        <div style={{fontSize:11,color:"#F59E0B",letterSpacing:2,fontWeight:700,marginBottom:2}}>FINAL SCORE (70% LEADING + 30% MOM (modulato))</div>
+        <div style={{fontSize:11,color:"#F59E0B",letterSpacing:2,fontWeight:700,marginBottom:2}}>FINAL SCORE ({pmMode==="satellite"?"60% leading + 40% mom":"100% momentum"})</div>
         <div style={{fontSize:8,color:"#374151",marginBottom:10}}>Score composito predittivo</div>
         <ResponsiveContainer width="100%" height={160}>
           <BarChart data={[...SCENARIOS].sort((a,b)=>(finalMap[b.id]??0)-(finalMap[a.id]??0)).map(s=>({name:s.name.replace(" AGGRESSIVO","").replace("/SOFT LANDING",""),val:Math.round(finalMap[s.id]??0),active:s.active}))} margin={{top:0,right:0,bottom:40,left:0}}>
